@@ -103,18 +103,23 @@ async def get_ollama_models():
     import subprocess
 
     # Popular Ollama models (fallback for cloud deployments)
+    # Includes both local and :cloud variants
     popular_models = [
-        {"name": "llama3.2:3b", "label": "Llama 3.2 3B"},
-        {"name": "llama3.1:8b", "label": "Llama 3.1 8B"},
-        {"name": "llama3.1:70b", "label": "Llama 3.1 70B"},
-        {"name": "llama3.3:70b", "label": "Llama 3.3 70B"},
-        {"name": "qwen2.5:7b", "label": "Qwen 2.5 7B"},
-        {"name": "qwen2.5:14b", "label": "Qwen 2.5 14B"},
-        {"name": "qwen2.5:32b", "label": "Qwen 2.5 32B"},
-        {"name": "mistral:7b", "label": "Mistral 7B"},
-        {"name": "mixtral:8x7b", "label": "Mixtral 8x7B"},
-        {"name": "gemma2:9b", "label": "Gemma 2 9B"},
-        {"name": "gemma2:27b", "label": "Gemma 2 27B"},
+        # Small local models
+        {"name": "llama3.2:3b", "label": "Llama 3.2 3B (local)"},
+        {"name": "llama3.1:8b", "label": "Llama 3.1 8B (local)"},
+        {"name": "qwen2.5:7b", "label": "Qwen 2.5 7B (local)"},
+        {"name": "mistral:7b", "label": "Mistral 7B (local)"},
+        {"name": "gemma2:9b", "label": "Gemma 2 9B (local)"},
+
+        # Large cloud models (require :cloud suffix)
+        {"name": "llama3.1:70b-cloud", "label": "Llama 3.1 70B (cloud)"},
+        {"name": "llama3.3:70b-cloud", "label": "Llama 3.3 70B (cloud)"},
+        {"name": "qwen2.5:14b-cloud", "label": "Qwen 2.5 14B (cloud)"},
+        {"name": "qwen2.5:32b-cloud", "label": "Qwen 2.5 32B (cloud)"},
+        {"name": "mixtral:8x7b-cloud", "label": "Mixtral 8x7B (cloud)"},
+        {"name": "gemma2:27b-cloud", "label": "Gemma 2 27B (cloud)"},
+        {"name": "deepseek-v4-pro:cloud", "label": "DeepSeek V4 Pro (cloud)"},
     ]
 
     try:
