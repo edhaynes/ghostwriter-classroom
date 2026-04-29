@@ -34,3 +34,4 @@ dump.rdb
 # OS
 .DS_Store
 Thumbs.db
+groq_key_encrypted.txt
