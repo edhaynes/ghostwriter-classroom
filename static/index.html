@@ -65,6 +65,7 @@
   .story-detail h3 { color: var(--red); margin-bottom: 8px; font-size: 1.2rem; }
   .story-detail p { line-height: 1.6; color: var(--navy); margin-bottom: 12px; }
   .story-detail .label { font-weight: bold; color: var(--gray); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  th[onclick]:hover { background: #555 !important; }
 </style>
 </head>
 <body>
@@ -772,13 +773,13 @@
         <table style="width:100%;border-collapse:collapse">
           <thead style="position:sticky;top:0;background:#333;color:white">
             <tr>
-              <th style="padding:6px;text-align:left">Timestamp</th>
-              <th style="padding:6px;text-align:left">Source IP</th>
-              <th style="padding:6px;text-align:left">Source MAC</th>
-              <th style="padding:6px;text-align:left">Dest IP</th>
-              <th style="padding:6px;text-align:left">Port</th>
-              <th style="padding:6px;text-align:left">Protocol</th>
-              <th style="padding:6px;text-align:left">Event Type</th>
+              <th style="padding:6px;text-align:left;cursor:pointer;user-select:none" onclick="sortTraffic('timestamp')">Timestamp <span id="sort-timestamp"></span></th>
+              <th style="padding:6px;text-align:left;cursor:pointer;user-select:none" onclick="sortTraffic('source_ip')">Source IP <span id="sort-source_ip"></span></th>
+              <th style="padding:6px;text-align:left;cursor:pointer;user-select:none" onclick="sortTraffic('source_mac')">Source MAC <span id="sort-source_mac"></span></th>
+              <th style="padding:6px;text-align:left;cursor:pointer;user-select:none" onclick="sortTraffic('dest_ip')">Dest IP <span id="sort-dest_ip"></span></th>
+              <th style="padding:6px;text-align:left;cursor:pointer;user-select:none" onclick="sortTraffic('dest_port')">Port <span id="sort-dest_port"></span></th>
+              <th style="padding:6px;text-align:left;cursor:pointer;user-select:none" onclick="sortTraffic('protocol')">Protocol <span id="sort-protocol"></span></th>
+              <th style="padding:6px;text-align:left;cursor:pointer;user-select:none" onclick="sortTraffic('event_type')">Event Type <span id="sort-event_type"></span></th>
             </tr>
           </thead>
           <tbody id="modal-traffic-tbody"></tbody>
@@ -803,6 +804,11 @@ let reviewAssignment = [];  // [storyA_id, storyB_id]
 let finalFinalists = [];
 let kserveAvailable = false;  // Whether running in OpenShift
 let availableModels = { groq: [], ollama: [], kserve: [] };  // Dynamically loaded models
+
+// Traffic table sorting state
+let trafficData = [];  // Store traffic entries for sorting
+let trafficSortColumn = 'timestamp';  // Current sort column
+let trafficSortAscending = true;  // Sort direction
 
 const API = '';   // same origin
 
@@ -857,25 +863,97 @@ async function generateTraffic() {
 async function loadTrafficData(tableBodyId) {
   try {
     const res = await api('GET', `/classroom/sessions/${sessionId}/traffic`);
-    const tbody = document.getElementById(tableBodyId);
-    tbody.innerHTML = '';
-    
-    res.entries.forEach(entry => {
-      const row = document.createElement('tr');
-      const timestamp = new Date(entry.timestamp).toLocaleTimeString();
-      row.innerHTML = `
-        <td style="padding:4px;font-size:0.75rem">${timestamp}</td>
-        <td style="padding:4px">${entry.source_ip}</td>
-        <td style="padding:4px">${entry.source_mac}</td>
-        <td style="padding:4px">${entry.dest_ip}</td>
-        <td style="padding:4px">${entry.dest_port}</td>
-        <td style="padding:4px;font-size:0.75rem">${entry.event_type}</td>
-      `;
-      tbody.appendChild(row);
-    });
+
+    // Store data globally for sorting
+    trafficData = res.entries;
+
+    // Reset sort state and render
+    trafficSortColumn = 'timestamp';
+    trafficSortAscending = true;
+    renderTrafficTable(tableBodyId);
   } catch(e) {
     console.error('Error loading traffic:', e);
   }
+}
+
+function renderTrafficTable(tableBodyId) {
+  const tbody = document.getElementById(tableBodyId);
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  // Update sort indicators
+  ['timestamp', 'source_ip', 'source_mac', 'dest_ip', 'dest_port', 'protocol', 'event_type'].forEach(col => {
+    const indicator = document.getElementById(`sort-${col}`);
+    if (indicator) {
+      if (col === trafficSortColumn) {
+        indicator.textContent = trafficSortAscending ? '▲' : '▼';
+      } else {
+        indicator.textContent = '';
+      }
+    }
+  });
+
+  trafficData.forEach(entry => {
+    const row = document.createElement('tr');
+    const timestamp = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    row.innerHTML = `
+      <td style="padding:6px;font-size:0.85rem;border-bottom:1px solid #ddd">${timestamp}</td>
+      <td style="padding:6px;border-bottom:1px solid #ddd">${entry.source_ip}</td>
+      <td style="padding:6px;border-bottom:1px solid #ddd">${entry.source_mac}</td>
+      <td style="padding:6px;border-bottom:1px solid #ddd">${entry.dest_ip}</td>
+      <td style="padding:6px;border-bottom:1px solid #ddd">${entry.dest_port}</td>
+      <td style="padding:6px;border-bottom:1px solid #ddd">${entry.protocol || 'TCP'}</td>
+      <td style="padding:6px;font-size:0.85rem;border-bottom:1px solid #ddd">${entry.event_type}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function sortTraffic(column) {
+  // Toggle direction if clicking same column, otherwise ascending
+  if (trafficSortColumn === column) {
+    trafficSortAscending = !trafficSortAscending;
+  } else {
+    trafficSortColumn = column;
+    trafficSortAscending = true;
+  }
+
+  // Sort the data
+  trafficData.sort((a, b) => {
+    let valA = a[column];
+    let valB = b[column];
+
+    // Handle timestamp as Date
+    if (column === 'timestamp') {
+      valA = new Date(valA);
+      valB = new Date(valB);
+    }
+
+    // Handle port as number
+    if (column === 'dest_port') {
+      valA = parseInt(valA);
+      valB = parseInt(valB);
+    }
+
+    // String comparison for others
+    if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+    }
+
+    if (valA < valB) return trafficSortAscending ? -1 : 1;
+    if (valA > valB) return trafficSortAscending ? 1 : -1;
+    return 0;
+  });
+
+  // Re-render
+  renderTrafficTable('modal-traffic-tbody');
 }
 
 async function getSurpriseDetection() {
@@ -2519,29 +2597,14 @@ function closeDetectionModal() {
 async function showTrafficModal() {
   try {
     const res = await api('GET', `/classroom/sessions/${sessionId}/traffic`);
-    const tbody = document.getElementById('modal-traffic-tbody');
-    tbody.innerHTML = '';
 
-    res.entries.forEach(entry => {
-      const row = document.createElement('tr');
-      const timestamp = new Date(entry.timestamp).toLocaleTimeString('en-US', {
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
+    // Store data globally for sorting
+    trafficData = res.entries;
 
-      row.innerHTML = `
-        <td style="padding:6px;font-size:0.85rem;border-bottom:1px solid #ddd">${timestamp}</td>
-        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.source_ip}</td>
-        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.source_mac}</td>
-        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.dest_ip}</td>
-        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.dest_port}</td>
-        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.protocol}</td>
-        <td style="padding:6px;font-size:0.85rem;border-bottom:1px solid #ddd">${entry.event_type}</td>
-      `;
-      tbody.appendChild(row);
-    });
+    // Reset sort state and render
+    trafficSortColumn = 'timestamp';
+    trafficSortAscending = true;
+    renderTrafficTable('modal-traffic-tbody');
 
     document.getElementById('traffic-modal').classList.add('active');
   } catch(e) {
