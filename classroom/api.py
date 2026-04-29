@@ -99,8 +99,24 @@ async def get_config():
 
 @router.get("/models/ollama")
 async def get_ollama_models():
-    """Return list of locally available Ollama models."""
+    """Return list of locally available Ollama models, or popular defaults."""
     import subprocess
+
+    # Popular Ollama models (fallback for cloud deployments)
+    popular_models = [
+        {"name": "llama3.2:3b", "label": "Llama 3.2 3B"},
+        {"name": "llama3.1:8b", "label": "Llama 3.1 8B"},
+        {"name": "llama3.1:70b", "label": "Llama 3.1 70B"},
+        {"name": "llama3.3:70b", "label": "Llama 3.3 70B"},
+        {"name": "qwen2.5:7b", "label": "Qwen 2.5 7B"},
+        {"name": "qwen2.5:14b", "label": "Qwen 2.5 14B"},
+        {"name": "qwen2.5:32b", "label": "Qwen 2.5 32B"},
+        {"name": "mistral:7b", "label": "Mistral 7B"},
+        {"name": "mixtral:8x7b", "label": "Mixtral 8x7B"},
+        {"name": "gemma2:9b", "label": "Gemma 2 9B"},
+        {"name": "gemma2:27b", "label": "Gemma 2 27B"},
+    ]
+
     try:
         result = subprocess.run(
             ["ollama", "list"],
@@ -108,32 +124,32 @@ async def get_ollama_models():
             text=True,
             timeout=5,
         )
-        if result.returncode != 0:
-            logger.warning(f"ollama list failed: {result.stderr}")
-            return {"models": []}
+        if result.returncode == 0:
+            # Parse output (skip header line)
+            lines = result.stdout.strip().split('\n')[1:]
+            models = []
+            for line in lines:
+                if line.strip():
+                    # First column is the model name
+                    parts = line.split()
+                    if parts:
+                        model_name = parts[0]
+                        models.append({
+                            "name": model_name,
+                            "label": f"{model_name} (Ollama)"
+                        })
 
-        # Parse output (skip header line)
-        lines = result.stdout.strip().split('\n')[1:]
-        models = []
-        for line in lines:
-            if line.strip():
-                # First column is the model name
-                parts = line.split()
-                if parts:
-                    model_name = parts[0]
-                    models.append({
-                        "name": model_name,
-                        "label": f"{model_name} (Ollama)"
-                    })
+            if models:
+                logger.info(f"Found {len(models)} local Ollama models")
+                return {"models": models}
 
-        logger.info(f"Found {len(models)} Ollama models")
-        return {"models": models}
-    except FileNotFoundError:
-        logger.warning("ollama command not found")
-        return {"models": []}
-    except Exception as e:
-        logger.error(f"Failed to get Ollama models: {e}")
-        return {"models": []}
+        # Fallthrough to popular models
+        logger.info("Using popular Ollama models (local ollama not available)")
+        return {"models": popular_models}
+
+    except (FileNotFoundError, Exception) as e:
+        logger.info(f"Ollama not available locally, using popular models: {e}")
+        return {"models": popular_models}
 
 
 @router.get("/models/groq")

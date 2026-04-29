@@ -72,7 +72,7 @@
 
 <header>
   <span style="font-size:1.4rem">📖</span>
-  <h1>GHOSTWRITER <span style="opacity:.6;font-size:.9rem">Classroom</span> <span style="opacity:.4;font-size:.7rem;font-weight:normal">v0.5.6</span></h1>
+  <h1>GHOSTWRITER <span style="opacity:.6;font-size:.9rem">Classroom</span> <span style="opacity:.4;font-size:.7rem;font-weight:normal">v0.5.7</span></h1>
   <span class="badge" id="phase-badge">LOBBY</span>
   <div id="idle-timer" style="display:none;margin-left:20px;margin-right:60px;text-align:left">
     <div style="font-size:0.85rem;color:#666;margin-bottom:4px">Auto-shutdown in: <span id="idle-countdown" style="font-weight:600">--</span></div>
@@ -154,10 +154,24 @@
     </div>
 
     <div id="ollama-config-section" style="display:none;margin-bottom:20px;padding:16px;background:#F0F4FF;border:1px solid #B8CFFF;border-radius:6px">
-      <label>Ollama Endpoint <span style="font-size:0.85rem;color:var(--gray)">(leave blank for local: http://localhost:11434/v1)</span></label>
-      <input id="ollama-endpoint" type="text" placeholder="https://your-ollama-cloud.com/v1" style="margin-bottom:12px;width:100%" onchange="saveApiKey('ollama-endpoint')"/>
-      <label>Ollama API Key <span style="font-size:0.85rem;color:var(--gray)">(optional, for cloud Ollama)</span></label>
-      <input id="ollama-api-key" type="password" placeholder="ollama_..." style="margin-bottom:0;width:100%" onchange="saveApiKey('ollama-api-key')"/>
+      <label style="margin-bottom:8px">Ollama Location</label>
+      <div style="margin-bottom:16px">
+        <label style="display:inline-flex;align-items:center;margin-right:20px;font-weight:normal;cursor:pointer">
+          <input type="radio" name="ollama-location" value="local" checked onchange="toggleOllamaLocation()" style="width:auto;margin-right:6px">
+          <span>Local (localhost:11434)</span>
+        </label>
+        <label style="display:inline-flex;align-items:center;font-weight:normal;cursor:pointer">
+          <input type="radio" name="ollama-location" value="cloud" onchange="toggleOllamaLocation()" style="width:auto;margin-right:6px">
+          <span>Cloud (publicly routable)</span>
+        </label>
+      </div>
+
+      <div id="ollama-cloud-fields" style="display:none">
+        <label>Ollama Cloud Endpoint</label>
+        <input id="ollama-endpoint" type="text" placeholder="https://your-ollama-cloud.com/v1" style="margin-bottom:12px;width:100%" onchange="saveApiKey('ollama-endpoint')"/>
+        <label>Ollama API Key</label>
+        <input id="ollama-api-key" type="password" placeholder="ollama_..." style="margin-bottom:0;width:100%" onchange="saveApiKey('ollama-api-key')"/>
+      </div>
     </div>
 
     <p style="font-size:0.9rem;color:var(--gray);margin-bottom:16px">Story Generation Model</p>
@@ -1508,6 +1522,7 @@ async function createInstructorSession() {
     loadSavedApiKey('groq-api-key');
     loadSavedApiKey('ollama-endpoint');
     loadSavedApiKey('ollama-api-key');
+    restoreOllamaLocation();
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -1526,9 +1541,13 @@ function getModelOptions(provider) {
       // KServe endpoint is model-specific
       endpoint = `http://${m.name}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
     } else if (provider === 'ollama') {
-      // Use custom Ollama endpoint if set, otherwise default to localhost
-      const customEndpoint = sessionStorage.getItem('ollama_endpoint');
-      endpoint = customEndpoint || 'http://localhost:11434/v1';
+      // Use saved location preference
+      const isCloud = sessionStorage.getItem('ollama_location') === 'cloud';
+      if (isCloud) {
+        endpoint = sessionStorage.getItem('ollama_endpoint') || '';
+      } else {
+        endpoint = 'http://localhost:11434/v1';
+      }
     }
 
     return {
@@ -1611,6 +1630,49 @@ function loadSavedApiKey(inputId) {
     const input = document.getElementById(inputId);
     if (input) {
       input.value = savedValue;
+    }
+  }
+}
+
+function toggleOllamaLocation() {
+  const cloudSelected = document.querySelector('input[name="ollama-location"]:checked').value === 'cloud';
+  const cloudFields = document.getElementById('ollama-cloud-fields');
+
+  if (cloudSelected) {
+    cloudFields.style.display = 'block';
+  } else {
+    cloudFields.style.display = 'none';
+  }
+
+  // Save preference
+  sessionStorage.setItem('ollama_location', cloudSelected ? 'cloud' : 'local');
+}
+
+function getOllamaConfig() {
+  const locationRadio = document.querySelector('input[name="ollama-location"]:checked');
+  const isCloud = locationRadio && locationRadio.value === 'cloud';
+
+  if (isCloud) {
+    // Cloud: use custom endpoint and API key
+    const endpoint = document.getElementById('ollama-endpoint').value || '';
+    const apiKey = document.getElementById('ollama-api-key').value || '';
+    return { endpoint, apiKey };
+  } else {
+    // Local: localhost, no API key
+    return {
+      endpoint: 'http://localhost:11434/v1',
+      apiKey: ''
+    };
+  }
+}
+
+function restoreOllamaLocation() {
+  const savedLocation = sessionStorage.getItem('ollama_location');
+  if (savedLocation === 'cloud') {
+    const cloudRadio = document.querySelector('input[name="ollama-location"][value="cloud"]');
+    if (cloudRadio) {
+      cloudRadio.checked = true;
+      toggleOllamaLocation();
     }
   }
 }
@@ -1769,8 +1831,6 @@ async function startWriting() {
   const provider = document.getElementById('model-provider').value;
   const modelName = document.getElementById('model-name').value;
   const groqApiKey = document.getElementById('groq-api-key').value;
-  const ollamaEndpoint = document.getElementById('ollama-endpoint').value;
-  const ollamaApiKey = document.getElementById('ollama-api-key').value;
 
   let endpoint;
   let apiKey;
@@ -1782,8 +1842,9 @@ async function startWriting() {
     endpoint = `http://${modelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
     apiKey = '';
   } else if (provider === 'ollama') {
-    endpoint = ollamaEndpoint || 'http://localhost:11434/v1';
-    apiKey = ollamaApiKey || '';
+    const ollamaConfig = getOllamaConfig();
+    endpoint = ollamaConfig.endpoint;
+    apiKey = ollamaConfig.apiKey;
   }
 
   const modelConfig = {
@@ -1806,8 +1867,9 @@ async function startWriting() {
     gradingEndpoint = `http://${gradingModelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
     gradingApiKey = '';
   } else if (gradingProvider === 'ollama') {
-    gradingEndpoint = ollamaEndpoint || 'http://localhost:11434/v1';
-    gradingApiKey = ollamaApiKey || '';
+    const ollamaConfig = getOllamaConfig();
+    gradingEndpoint = ollamaConfig.endpoint;
+    gradingApiKey = ollamaConfig.apiKey;
   }
 
   const gradingConfig = {
@@ -2284,6 +2346,7 @@ async function initFromURL() {
     loadSavedApiKey('groq-api-key');
     loadSavedApiKey('ollama-endpoint');
     loadSavedApiKey('ollama-api-key');
+    restoreOllamaLocation();
     // Start idle timer for instructor
     startIdleTimer();
   } catch (e) {
@@ -2327,8 +2390,6 @@ async function runSimulation() {
     const provider = document.getElementById('model-provider').value;
     const modelName = document.getElementById('model-name').value;
     const groqApiKey = document.getElementById('groq-api-key').value;
-    const ollamaEndpoint = document.getElementById('ollama-endpoint').value;
-    const ollamaApiKey = document.getElementById('ollama-api-key').value;
 
     let endpoint;
     let apiKey;
@@ -2340,8 +2401,9 @@ async function runSimulation() {
       endpoint = `http://${modelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
       apiKey = '';
     } else if (provider === 'ollama') {
-      endpoint = ollamaEndpoint || 'http://localhost:11434/v1';
-      apiKey = ollamaApiKey || '';
+      const ollamaConfig = getOllamaConfig();
+      endpoint = ollamaConfig.endpoint;
+      apiKey = ollamaConfig.apiKey;
     }
     const modelConfig = {
       provider: provider,
@@ -2363,8 +2425,9 @@ async function runSimulation() {
       gradingEndpoint = `http://${gradingModelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
       gradingApiKey = '';
     } else if (gradingProvider === 'ollama') {
-      gradingEndpoint = ollamaEndpoint || 'http://localhost:11434/v1';
-      gradingApiKey = ollamaApiKey || '';
+      const ollamaConfig = getOllamaConfig();
+      gradingEndpoint = ollamaConfig.endpoint;
+      gradingApiKey = ollamaConfig.apiKey;
     }
     const gradingConfig = {
       provider: gradingProvider,
