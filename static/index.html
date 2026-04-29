@@ -789,6 +789,7 @@
 // ── State ────────────────────────────────────────────────────────────────────
 let sessionId = null, username = null, role = null; // role: instructor | student
 let sessionMode = 'storytelling';  // 'storytelling' or 'intrusion_detection'
+let hasNetworkTraffic = false;  // Track if traffic has been generated for detection mode
 let ws = null, timerInterval = null;
 let selectedReviewWinner = null, selectedFinalStory = null;
 let reviewAssignment = [];  // [storyA_id, storyB_id]
@@ -842,6 +843,7 @@ async function generateTraffic() {
     const res = await api('POST', `/classroom/sessions/${sessionId}/generate-traffic?difficulty=${difficulty}`);
     document.getElementById('traffic-entry-count').textContent = res.entries;
     document.getElementById('traffic-status').style.display = 'block';
+    hasNetworkTraffic = true;  // Mark traffic as generated
   } catch(e) { alert('Error generating traffic: ' + e.message); }
 }
 
@@ -1384,6 +1386,20 @@ async function createInstructorSession() {
     show('setup'); badge('SETUP');
     startIdleTimer();
 
+    // Check if traffic already exists (page refresh case)
+    if (mode === 'intrusion_detection') {
+      try {
+        const trafficRes = await api('GET', `/classroom/sessions/${sessionId}/traffic`);
+        if (trafficRes && trafficRes.entries && trafficRes.entries.length > 0) {
+          hasNetworkTraffic = true;
+          document.getElementById('traffic-entry-count').textContent = trafficRes.entries.length;
+          document.getElementById('traffic-status').style.display = 'block';
+        }
+      } catch(e) {
+        // Traffic doesn't exist yet, that's fine
+      }
+    }
+
     // Show/hide mode-specific cards
     if (mode === 'intrusion_detection') {
       document.getElementById('detection-setup-card').style.display = 'block';
@@ -1685,6 +1701,12 @@ async function startWriting() {
 
   // Mode-specific setup
   if (sessionMode === 'intrusion_detection') {
+    // Check if network traffic has been generated
+    if (!hasNetworkTraffic) {
+      alert('⚠️ Please generate network traffic first!\n\nClick "Generate Network Traffic" in the Detection Setup section before starting the writing phase.');
+      return;
+    }
+
     const detectionTemplate = document.getElementById('detection-template').value;
     await api('PUT', `/classroom/sessions/${sessionId}/arc`, { step1: detectionTemplate, step2: '', step3: '' });
   } else {
@@ -2229,6 +2251,11 @@ async function runSimulation() {
       student_count: count,
       story_delay: delay
     });
+
+    // Simulation auto-generates traffic in detection mode
+    if (sessionMode === 'intrusion_detection') {
+      hasNetworkTraffic = true;
+    }
   } catch(e) {
     alert('Simulation failed: ' + e.message);
   }
