@@ -121,6 +121,7 @@ async def get_ollama_models(location: str = "local"):
         return {"models": cloud_models}
 
     local_fallback = [
+        {"name": "granite4.1:3b", "label": "Granite 4.1 3B (ollama-local)"},
         {"name": "llama3.2:3b", "label": "Llama 3.2 3B (ollama-local)"},
         {"name": "llama3.1:8b", "label": "Llama 3.1 8B (ollama-local)"},
         {"name": "qwen2.5:7b", "label": "Qwen 2.5 7B (ollama-local)"},
@@ -602,6 +603,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         # Send current state immediately on connect
         await websocket.send_json({
             "event": "session.state",
+            "mode": session.mode,
             "phase": session.phase,
             "arc": session.story_arc.model_dump(),
             "rubric": session.rubric.model_dump(),

@@ -1939,7 +1939,7 @@ function startWritingPhase(deadline) {
       trafficCard.style.display = sessionMode === 'intrusion_detection' ? 'block' : 'none';
     }
 
-    const end = deadline ? new Date(deadline).getTime() : Date.now() + 120000;
+    const end = deadline ? new Date(deadline).getTime() : Date.now() + 300000;
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       const rem = Math.max(0, end - Date.now());
@@ -1959,7 +1959,7 @@ function startWritingPhase(deadline) {
     document.getElementById('detection-username').textContent = username;
     loadTrafficData('writing-traffic-tbody');
 
-    const end = deadline ? new Date(deadline).getTime() : Date.now() + 120000;
+    const end = deadline ? new Date(deadline).getTime() : Date.now() + 300000;
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       const rem = Math.max(0, end - Date.now());
@@ -1971,7 +1971,7 @@ function startWritingPhase(deadline) {
     }, 500);
   } else {
     show('writing');
-    const end = deadline ? new Date(deadline).getTime() : Date.now() + 120000;
+    const end = deadline ? new Date(deadline).getTime() : Date.now() + 300000;
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       const rem = Math.max(0, end - Date.now());
