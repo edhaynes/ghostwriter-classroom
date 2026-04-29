@@ -1,0 +1,91 @@
+---
+# Ghostwriter Classroom — OpenShift Deployment
+# Deploy into the same namespace as the main Ghostwriter service.
+#
+# Prerequisites:
+#   oc new-project ghostwriter   (or use existing namespace)
+#   oc create secret generic classroom-env \
+#     --from-literal=CLASSROOM_KSERVE_ENDPOINT=http://llama-3-8b-predictor.ghostwriter-models.svc.cluster.local:8080/v1 \
+#     --from-literal=CLASSROOM_MODEL=ghostwriter-llm
+#
+# Then apply:
+#   oc apply -f openshift/deployment.yaml
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghostwriter-classroom
+  namespace: ghostwriter
+  labels:
+    app: ghostwriter-classroom
+    app.kubernetes.io/part-of: ghostwriter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghostwriter-classroom
+  template:
+    metadata:
+      labels:
+        app: ghostwriter-classroom
+    spec:
+      containers:
+        - name: classroom
+          image: quay.io/your-org/ghostwriter-classroom:latest   # replace with your image
+          ports:
+            - containerPort: 8081
+              name: http
+          envFrom:
+            - secretRef:
+                name: classroom-env
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghostwriter-classroom
+  namespace: ghostwriter
+  labels:
+    app: ghostwriter-classroom
+spec:
+  selector:
+    app: ghostwriter-classroom
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ghostwriter-classroom
+  namespace: ghostwriter
+  labels:
+    app: ghostwriter-classroom
+spec:
+  to:
+    kind: Service
+    name: ghostwriter-classroom
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

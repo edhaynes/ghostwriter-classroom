@@ -1,0 +1,2488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ghostwriter Classroom</title>
+<style>
+  :root {
+    --red: #EE0000; --dark-red: #CC0000; --navy: #1D0C35;
+    --gray: #595959; --light: #F5F5F5; --white: #FFFFFF;
+    --primary: #EE0000; --bg-secondary: #F5F5F5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Red Hat Display", "Arial", sans-serif; background: var(--light); color: var(--navy); min-height: 100vh; }
+  header { background: var(--navy); color: var(--white); padding: 12px 24px; display: flex; align-items: center; gap: 12px; position: relative; }
+  header h1 { font-size: 1.4rem; letter-spacing: 0.04em; }
+  header .badge { background: var(--red); padding: 3px 10px; border-radius: 3px; font-size: 0.85rem; font-weight: bold; }
+  .redhat-logo { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); height: 32px; width: auto; }
+  .screen { display: none; padding: 32px 24px; max-width: 900px; margin: 0 auto; }
+  .screen.active { display: block; }
+  h2 { font-size: 1.6rem; margin-bottom: 8px; }
+  .subtitle { color: var(--gray); margin-bottom: 24px; font-size: 0.95rem; }
+  .card { background: var(--white); border-radius: 6px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  label { display: block; font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; color: var(--gray); }
+  input, textarea { width: 100%; border: 1px solid #DDD; border-radius: 4px; padding: 10px 12px; font-size: 1rem; font-family: inherit; margin-bottom: 12px; }
+  textarea { min-height: 60px; resize: vertical; }
+  .btn { display: inline-block; padding: 10px 22px; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; font-family: inherit; }
+  .btn-primary { background: var(--red); color: var(--white); }
+  .btn-primary:hover { background: var(--dark-red); }
+  .btn-secondary { background: var(--navy); color: var(--white); }
+  .btn-dice { background: var(--navy); color: var(--white); font-size: 1.1rem; padding: 12px 28px; }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .timer { font-size: 3rem; font-weight: bold; color: var(--red); text-align: center; padding: 16px; }
+  .timer.urgent { color: var(--red); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .username-chip { display: inline-block; background: var(--red); color: var(--white); border-radius: 4px; padding: 4px 12px; font-weight: bold; font-size: 1.1rem; margin-bottom: 16px; }
+  .story-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .story-card { border: 2px solid #DDD; border-radius: 6px; padding: 20px; cursor: pointer; transition: border-color .2s; }
+  .story-card:hover, .story-card.selected { border-color: var(--red); }
+  .story-card h3 { color: var(--red); margin-bottom: 8px; }
+  .story-card p { font-size: 0.9rem; color: var(--gray); line-height: 1.5; margin-bottom: 6px; }
+  .leaderboard { width: 100%; border-collapse: collapse; }
+  .leaderboard th { background: var(--navy); color: var(--white); padding: 10px 14px; text-align: left; font-size: 0.9rem; }
+  .leaderboard td { padding: 10px 14px; border-bottom: 1px solid #EEE; font-size: 0.9rem; }
+  .leaderboard tr.winner td { background: #FFF0F0; font-weight: bold; }
+  .leaderboard tr.ai-pick td { background: #F0F0FF; }
+  .winner-banner { background: var(--red); color: var(--white); border-radius: 6px; padding: 20px; text-align: center; margin-bottom: 20px; }
+  .winner-banner h2 { font-size: 2rem; margin-bottom: 4px; }
+  .phase-indicator { display: flex; gap: 4px; margin-bottom: 24px; }
+  .phase-dot { flex: 1; height: 6px; border-radius: 3px; background: #DDD; }
+  .phase-dot.done { background: var(--red); }
+  .phase-dot.active { background: var(--dark-red); }
+  .session-code { font-size: 3rem; font-weight: bold; letter-spacing: .2em; color: var(--red); text-align: center; padding: 16px 0; }
+  .info-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .info-chip { background: #EEE; border-radius: 4px; padding: 6px 12px; font-size: 0.85rem; }
+  .arc-step { background: #F5F5F5; border-left: 4px solid var(--red); padding: 10px 14px; margin-bottom: 8px; border-radius: 0 4px 4px 0; font-size: 0.95rem; }
+  .clickable-row { cursor: pointer; }
+  .clickable-row:hover { background: #F9F9F9; }
+  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+  .modal.active { display: flex; }
+  .modal-content { background: var(--white); border-radius: 8px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 32px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 2rem; cursor: pointer; color: var(--gray); line-height: 1; }
+  .modal-close:hover { color: var(--navy); }
+  .story-detail { margin-bottom: 20px; }
+  .story-detail h3 { color: var(--red); margin-bottom: 8px; font-size: 1.2rem; }
+  .story-detail p { line-height: 1.6; color: var(--navy); margin-bottom: 12px; }
+  .story-detail .label { font-weight: bold; color: var(--gray); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.4rem">📖</span>
+  <h1>GHOSTWRITER <span style="opacity:.6;font-size:.9rem">Classroom</span> <span style="opacity:.4;font-size:.7rem;font-weight:normal">v0.5.5</span></h1>
+  <span class="badge" id="phase-badge">LOBBY</span>
+  <div id="idle-timer" style="display:none;margin-left:20px;margin-right:60px;text-align:left">
+    <div style="font-size:0.85rem;color:#666;margin-bottom:4px">Auto-shutdown in: <span id="idle-countdown" style="font-weight:600">--</span></div>
+    <button onclick="extendSession()" style="font-size:0.75rem;padding:4px 12px;background:#28a745;border:none;border-radius:4px;color:white;cursor:pointer">+ 30 min</button>
+  </div>
+  <svg class="redhat-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+    <!-- Official Red Hat logo fedora -->
+    <g fill="#EE0000">
+      <path d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+    </g>
+  </svg>
+</header>
+
+<!-- ── SCREEN: Lobby ──────────────────────────────────────────────────────── -->
+<div id="screen-lobby" class="screen active">
+  <h2>Join or Create a Session <a href="https://docs.google.com/presentation/d/14OxjURlMufdDPe8VQrNUmYY60K-RKAqm/edit?usp=sharing&ouid=115653097073952126332&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer" title="Open presentation" style="text-decoration:none;font-size:1.2rem;margin-left:8px">📊</a></h2>
+  <p class="subtitle">Enter the session code your instructor shared, or start a new instructor session.</p>
+  <div class="card">
+    <label>Session code</label>
+    <input id="session-code-input" placeholder="e.g. A3F" maxlength="3" style="text-transform:uppercase;font-size:1.4rem;letter-spacing:.1em"/>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="joinSession()">Join as Student</button>
+      <button class="btn btn-secondary" onclick="createSession()">New Instructor Session</button>
+    </div>
+  </div>
+
+  <div class="card" id="mode-selector-card" style="display:none">
+    <label>Session Mode</label>
+    <select id="mode-select" style="width:100%;padding:10px;margin-bottom:12px;font-size:1rem">
+      <option value="storytelling">📖 Story Improvement</option>
+      <option value="intrusion_detection">🔒 Network Intrusion Detection</option>
+    </select>
+    <button class="btn btn-primary" onclick="createInstructorSession()">Create Session</button>
+  </div>
+</div>
+
+<!-- ── SCREEN: Instructor Setup ──────────────────────────────────────────── -->
+<div id="screen-setup" class="screen">
+  <h2>Session Setup <span style="font-size:1rem;color:var(--gray)">— Instructor</span> <a href="https://docs.google.com/presentation/d/14OxjURlMufdDPe8VQrNUmYY60K-RKAqm/edit?usp=sharing&ouid=115653097073952126332&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer" title="Open presentation" style="text-decoration:none;font-size:1.2rem;margin-left:8px">📊</a></h2>
+  <p class="subtitle">Set the story arc and grading rubric with your class, then start the writing sprint.</p>
+  <div class="session-code" id="display-session-id">——</div>
+  <div class="info-row"><span class="info-chip" id="student-count-chip">0 students connected</span></div>
+
+  <!-- Story Arc (storytelling mode only) -->
+  <div id="story-arc-card" class="card">
+    <h3 style="margin-bottom:12px">📖 Story Arc</h3>
+    <label>Step 1 — Introduce the hero</label>
+    <textarea id="arc1" placeholder="e.g. A retired astronaut living in a small fishing village">A detective investigates a mysterious death in a Victorian mansion</textarea>
+    <label>Step 2 — Hero faces a challenge</label>
+    <textarea id="arc2" placeholder="e.g. A signal arrives from deep space addressed to them personally">Strange symbols and conflicting alibis complicate the case</textarea>
+    <label>Step 3 — Hero overcomes it</label>
+    <textarea id="arc3" placeholder="e.g. They must choose between their quiet life and answering the call">The detective must unmask the killer before they strike again</textarea>
+  </div>
+
+  <!-- Detection Template (detection mode only) -->
+  <div id="detection-template-card" class="card" style="display:none">
+    <h3 style="margin-bottom:12px">🔍 Detection Prompt Template</h3>
+    <p style="font-size:0.9rem;color:var(--gray);margin-bottom:12px">Provide guidance for students on what their detection script should accomplish.</p>
+    <label>Detection Goal</label>
+    <textarea id="detection-template" placeholder="e.g. Write a detection rule that identifies port scanning activity across multiple ports from the same MAC address within a 15-minute window, while ignoring legitimate failed authentication attempts.">Write a detection script that identifies coordinated multi-port probing from a single attacker using MAC address correlation, while filtering out common false positives like isolated failed logins.</textarea>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">⚖️ Grading Rubric</h3>
+    <label>Criterion 1</label>
+    <input id="rub1" value="How likeable is the hero?"/>
+    <label>Criterion 2</label>
+    <input id="rub2" value="How difficult was the challenge?"/>
+    <label>Criterion 3</label>
+    <input id="rub3" value="How satisfying was the resolution?"/>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">⚙️ AI Model Settings</h3>
+
+    <div id="groq-api-key-section" style="margin-bottom:20px;padding:16px;background:#FFF9E6;border:1px solid #FFE066;border-radius:6px">
+      <label>Groq API Key <span style="font-size:0.85rem;color:var(--gray)">(used for all Groq models)</span></label>
+      <input id="groq-api-key" type="password" placeholder="gsk_..." style="margin-bottom:0;width:100%" onchange="saveApiKey('groq-api-key')"/>
+    </div>
+
+    <p style="font-size:0.9rem;color:var(--gray);margin-bottom:16px">Story Generation Model</p>
+    <label>Provider</label>
+    <select id="model-provider" onchange="updateModelOptions()" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid #DDD;border-radius:4px;font-size:1rem">
+      <option value="groq">Groq (Cloud)</option>
+      <option value="kserve">OpenShift KServe (Local)</option>
+      <option value="ollama">Ollama (Mac/Windows)</option>
+    </select>
+    <label>Model</label>
+    <select id="model-name" style="width:100%;padding:10px;margin-bottom:16px;border:1px solid #DDD;border-radius:4px;font-size:1rem">
+      <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+      <option value="llama-3.1-70b-versatile">Llama 3.1 70B Versatile</option>
+      <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+      <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+    </select>
+
+    <hr style="margin:20px 0;border:none;border-top:1px solid #DDD">
+
+    <p style="font-size:0.9rem;color:var(--gray);margin-bottom:16px">Grading Model (Independent)</p>
+    <label>Provider</label>
+    <select id="grading-provider" onchange="updateGradingModelOptions()" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid #DDD;border-radius:4px;font-size:1rem">
+      <option value="groq">Groq (Cloud)</option>
+      <option value="kserve">OpenShift KServe (Local)</option>
+      <option value="ollama">Ollama (Mac/Windows)</option>
+    </select>
+    <label>Model</label>
+    <select id="grading-model-name" style="width:100%;padding:10px;margin-bottom:0;border:1px solid #DDD;border-radius:4px;font-size:1rem">
+      <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+      <option value="llama-3.1-70b-versatile">Llama 3.1 70B Versatile</option>
+      <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+      <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+    </select>
+  </div>
+
+  <!-- Detection mode: Network Traffic Configuration -->
+  <div id="detection-setup-card" class="card" style="display:none">
+    <h3 style="margin-bottom:12px">🔒 Network Traffic Configuration</h3>
+    <label>Difficulty</label>
+    <select id="traffic-difficulty" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid #DDD;border-radius:4px;font-size:1rem">
+      <option value="easy">Easy - Obvious patterns, few distractions</option>
+      <option value="medium" selected>Medium - Standard challenge</option>
+      <option value="hard">Hard - Many red herrings, complex patterns</option>
+    </select>
+    <button class="btn btn-secondary" onclick="generateTraffic()">🌐 Generate Network Traffic</button>
+    <div id="traffic-status" style="display:none;margin-top:12px">
+      <span class="info-chip">✓ Traffic generated: <span id="traffic-entry-count">0</span> events</span>
+      <button class="btn btn-secondary" onclick="showTrafficModal()" style="margin-left:12px">📊 Preview Traffic</button>
+    </div>
+  </div>
+
+  <div class="card" style="background:#F9F9F9; border:2px dashed #CCC">
+    <h3 style="margin-bottom:12px">🎭 Demo Mode</h3>
+    <p style="font-size:0.9rem;color:var(--gray);margin-bottom:12px">Automatically simulate students and stories for testing</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div>
+        <label>Number of students</label>
+        <input id="simulate-count" type="number" min="2" max="40" value="3" style="width:100%"/>
+      </div>
+      <div>
+        <label>Story delay (seconds)</label>
+        <select id="simulate-delay" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:4px">
+          <option value="0.5">0.5s (fast)</option>
+          <option value="1">1s</option>
+          <option value="2">2s</option>
+          <option value="3" selected>3s (default)</option>
+          <option value="5">5s</option>
+          <option value="10">10s (slow)</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="runSimulation()">🎬 Run Full Simulation</button>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="start-sprint-btn" style="font-size:1.1rem;padding:14px 32px" onclick="startWriting()">▶ Start 5-Minute Sprint</button>
+</div>
+
+<!-- ── SCREEN: Instructor Writing ─────────────────────────────────────────── -->
+<div id="screen-instructor-writing" class="screen">
+  <h2>Writing in Progress <span style="font-size:1rem;color:var(--gray)">— Instructor</span></h2>
+  <p class="subtitle" id="instructor-writing-subtitle">Students are crafting their stories. Monitor submissions below.</p>
+  <div class="session-code" id="instructor-writing-session-id">——</div>
+
+  <div class="card" style="text-align:center">
+    <div class="timer" id="instructor-writing-timer">--:--</div>
+    <div style="font-size:1.2rem;margin-top:12px" id="instructor-submission-count">0 / 0 stories submitted</div>
+  </div>
+
+  <div class="card">
+    <h3>Connected Students</h3>
+    <div id="instructor-student-list" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div>
+  </div>
+
+  <div class="card" id="instructor-writing-traffic-card" style="display:none">
+    <h3>📊 Network Traffic</h3>
+    <p style="color:var(--gray);margin-bottom:12px">Students are analyzing this traffic to write their detections</p>
+    <button class="btn btn-secondary" onclick="showTrafficModal()">View Full Traffic Log</button>
+  </div>
+</div>
+
+<!-- ── SCREEN: Instructor Review ──────────────────────────────────────────── -->
+<div id="screen-instructor-review" class="screen">
+  <h2 id="instructor-review-title">Peer Review <span style="font-size:1rem;color:var(--gray)">— Instructor</span></h2>
+  <p class="subtitle" id="instructor-review-subtitle">Students are voting on story pairs. AI grading complete.</p>
+  <div class="session-code" id="instructor-review-session-id">——</div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">AI Grading Results</h3>
+    <table class="leaderboard" id="instructor-review-scores">
+      <thead>
+        <tr id="instructor-review-scores-header">
+          <th>Story</th>
+          <th>Author</th>
+          <th>Criterion 1</th>
+          <th>Criterion 2</th>
+          <th>Criterion 3</th>
+          <th>Composite</th>
+        </tr>
+      </thead>
+      <tbody id="instructor-review-scores-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="instructor-peer-voting-card">
+    <h3>Peer Voting Progress</h3>
+    <div id="instructor-peer-voting-status" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- ── SCREEN: Instructor Final Vote ──────────────────────────────────────── -->
+<div id="screen-instructor-final" class="screen">
+  <h2>Final Vote <span style="font-size:1rem;color:var(--gray)">— Instructor</span></h2>
+  <p class="subtitle">The class is voting on the top 2 finalists.</p>
+  <div class="session-code" id="instructor-final-session-id">——</div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">Finalists</h3>
+    <div id="instructor-finalists-display" style="display:grid;grid-template-columns:1fr 1fr;gap:16px"></div>
+  </div>
+
+  <div class="card">
+    <h3>Voting Progress</h3>
+    <div id="instructor-final-voting-status" style="margin-top:12px;font-size:1.2rem"></div>
+  </div>
+</div>
+
+<!-- ── SCREEN: Instructor Reveal ──────────────────────────────────────────── -->
+<div id="screen-instructor-reveal" class="screen">
+  <h2>Results <span style="font-size:1rem;color:var(--gray)">— Instructor</span></h2>
+  <p class="subtitle">Session complete! Here are the results.</p>
+  <div class="session-code" id="instructor-reveal-session-id">——</div>
+
+  <div class="winner-banner" id="instructor-winner-banner">
+    <h2 id="instructor-winner-name">Loading...</h2>
+    <p id="instructor-winner-subtitle">by <span id="instructor-winner-author"></span></p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">Full Leaderboard</h3>
+    <table class="leaderboard">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Story</th>
+          <th>Author</th>
+          <th>Peer Votes</th>
+          <th>Final Votes</th>
+          <th>AI Score</th>
+        </tr>
+      </thead>
+      <tbody id="instructor-leaderboard-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="polish-section">
+    <h3>AI Polish Winner - Compare Models</h3>
+    <p style="margin-bottom:16px">Compare two AI models polishing the same story.</p>
+    <div style="margin-bottom:16px" id="polish-controls">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+        <div>
+          <label>Polish Model 1</label>
+          <select id="polish-model-1" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:4px;font-size:0.95rem">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <div>
+          <label>Polish Model 2</label>
+          <select id="polish-model-2" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:4px;font-size:0.95rem">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <label>Polish Rounds:
+          <input type="number" id="polish-rounds" min="1" max="10" value="3" style="width:80px;margin-left:8px">
+        </label>
+        <button class="btn btn-primary" onclick="runPolish()">Compare Polish</button>
+      </div>
+    </div>
+    <div id="polish-progress" style="display:none;margin-bottom:16px;padding:16px;background:var(--light);border-radius:6px">
+      <p style="margin-bottom:12px"><strong>Polishing with both models...</strong></p>
+      <p style="font-size:1.3rem;margin-bottom:12px">Round <span id="polish-current-round">0</span> / <span id="polish-total-rounds">0</span></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <p style="font-weight:bold;margin-bottom:4px">Model 1: <span id="polish-model-1-name">—</span></p>
+          <p style="font-size:0.9rem;color:var(--gray);margin-bottom:4px">Round <span id="polish-round-1">0</span>/<span id="polish-total-1">0</span></p>
+          <p style="font-size:1.1rem">Score: <strong id="polish-score-1" style="color:var(--red)">—</strong></p>
+        </div>
+        <div>
+          <p style="font-weight:bold;margin-bottom:4px">Model 2: <span id="polish-model-2-name">—</span></p>
+          <p style="font-size:0.9rem;color:var(--gray);margin-bottom:4px">Round <span id="polish-round-2">0</span>/<span id="polish-total-2">0</span></p>
+          <p style="font-size:1.1rem">Score: <strong id="polish-score-2" style="color:var(--red)">—</strong></p>
+        </div>
+      </div>
+    </div>
+    <div id="polish-results" style="display:none">
+      <h4 style="margin-top:24px">Polish Complete - Model Comparison</h4>
+      <p style="color:var(--gray);margin-bottom:16px">Winner: <strong id="polish-author">—</strong></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px">
+        <div class="card" style="background:var(--bg-secondary);padding:20px">
+          <h5 style="margin-bottom:16px;font-size:1.2rem">Original Winning Story</h5>
+          <div style="margin-bottom:12px">
+            <strong style="font-size:1.1rem;color:var(--navy)" id="polish-orig-hero">—</strong>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Backstory:</strong><br>
+            <span id="polish-orig-backstory">—</span>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Challenge:</strong><br>
+            <span id="polish-orig-challenge">—</span>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Resolution:</strong><br>
+            <span id="polish-orig-resolution">—</span>
+          </div>
+          <div style="margin-top:20px;padding-top:16px;border-top:2px solid #DDD">
+            <strong>AI Score:</strong> <span id="polish-orig-score" style="font-size:1.3rem;color:var(--red)">—</span>
+          </div>
+        </div>
+        <div class="card" style="background:var(--primary);color:white;padding:20px">
+          <h5 style="margin-bottom:16px;font-size:1.2rem">✨ Model 1 Polish</h5>
+          <div style="margin-bottom:12px">
+            <strong style="font-size:1.1rem" id="polish-new-hero">—</strong>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Backstory:</strong><br>
+            <span id="polish-new-backstory">—</span>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Challenge:</strong><br>
+            <span id="polish-new-challenge">—</span>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Resolution:</strong><br>
+            <span id="polish-new-resolution">—</span>
+          </div>
+          <div style="margin-top:20px;padding-top:16px;border-top:2px solid rgba(255,255,255,0.3)">
+            <strong>AI Score:</strong> <span id="polish-new-score" style="font-size:1.3rem;color:#FFD700">—</span>
+          </div>
+        </div>
+        <div class="card" style="background:var(--red);color:white;padding:20px">
+          <h5 style="margin-bottom:16px;font-size:1.2rem">✨ Model 2 Polish</h5>
+          <div style="margin-bottom:12px">
+            <strong style="font-size:1.1rem" id="polish-model2-hero">—</strong>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Backstory:</strong><br>
+            <span id="polish-model2-backstory">—</span>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Challenge:</strong><br>
+            <span id="polish-model2-challenge">—</span>
+          </div>
+          <div style="margin-bottom:16px;line-height:1.5">
+            <strong>Resolution:</strong><br>
+            <span id="polish-model2-resolution">—</span>
+          </div>
+          <div style="margin-top:20px;padding-top:16px;border-top:2px solid rgba(255,255,255,0.3)">
+            <strong>AI Score:</strong> <span id="polish-model2-score" style="font-size:1.3rem;color:#FFD700">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-secondary" onclick="location.reload()">Create New Session</button>
+</div>
+
+<!-- ── SCREEN: Student Waiting ────────────────────────────────────────────── -->
+<div id="screen-waiting" class="screen">
+  <h2>Waiting for instructor…</h2>
+  <p class="subtitle">The session will start soon. Get ready to write!</p>
+  <div class="username-chip" id="my-username-display">Loading…</div>
+  <div class="card" id="arc-preview" style="display:none">
+    <h3 style="margin-bottom:12px">Story Arc for this session</h3>
+    <div class="arc-step" id="arc-preview-1"></div>
+    <div class="arc-step" id="arc-preview-2"></div>
+    <div class="arc-step" id="arc-preview-3"></div>
+  </div>
+</div>
+
+<!-- ── SCREEN: Writing ───────────────────────────────────────────────────── -->
+<div id="screen-writing" class="screen">
+  <div class="phase-indicator">
+    <div class="phase-dot done"></div><div class="phase-dot active"></div>
+    <div class="phase-dot"></div><div class="phase-dot"></div><div class="phase-dot"></div>
+  </div>
+  <div class="timer" id="countdown">3:00</div>
+  <div class="username-chip" id="writing-username"></div>
+  <div class="card">
+    <h3 style="margin-bottom:4px">Your story</h3>
+    <p style="color:var(--gray);font-size:.85rem;margin-bottom:16px" id="writing-arc-hint"></p>
+    <p style="background:#FFF3CD;padding:8px 12px;border-radius:4px;font-size:0.85rem;margin-bottom:16px;border-left:3px solid #FFA500">
+      ⚠️ Content must be PG-13 appropriate and use original characters (no copyrighted/trademarked characters)
+    </p>
+    <label>Hero name</label>
+    <input id="w-hero-name" placeholder="e.g. Captain Vera"/>
+    <label>Hero backstory <span style="font-weight:normal">(one sentence)</span></label>
+    <textarea id="w-backstory" placeholder="Who are they and what do they want?"></textarea>
+    <label>The challenge <span style="font-weight:normal">(one sentence)</span></label>
+    <textarea id="w-challenge" placeholder="What stands in their way?"></textarea>
+    <label>Resolution + reward <span style="font-weight:normal">(one sentence)</span></label>
+    <textarea id="w-resolution" placeholder="How did they overcome it, and what did they gain?"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitStory()">Submit Story</button>
+      <button class="btn btn-dice" onclick="surpriseMe()">🎲 Surprise Me!</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN: Peer Review ───────────────────────────────────────────────── -->
+<div id="screen-review" class="screen">
+  <div class="phase-indicator">
+    <div class="phase-dot done"></div><div class="phase-dot done"></div>
+    <div class="phase-dot active"></div><div class="phase-dot"></div><div class="phase-dot"></div>
+  </div>
+  <h2>Which story is better?</h2>
+  <p class="subtitle">Click the story you think is stronger. Your vote is anonymous.</p>
+  <div class="story-pair" id="review-pair"></div>
+  <button class="btn btn-primary" id="submit-review-btn" onclick="submitReview()" style="display:none">Submit Vote</button>
+</div>
+
+<!-- ── SCREEN: Final Vote ─────────────────────────────────────────────────── -->
+<div id="screen-final" class="screen">
+  <div class="phase-indicator">
+    <div class="phase-dot done"></div><div class="phase-dot done"></div>
+    <div class="phase-dot done"></div><div class="phase-dot active"></div><div class="phase-dot"></div>
+  </div>
+  <h2>The Final Two</h2>
+  <p class="subtitle">Vote for your favourite. Majority wins — AI breaks any tie.</p>
+  <div class="story-pair" id="final-pair"></div>
+  <button class="btn btn-primary" id="submit-final-btn" onclick="submitFinalVote()" style="display:none">Cast Final Vote</button>
+</div>
+
+<!-- ── SCREEN: Reveal ─────────────────────────────────────────────────────── -->
+<div id="screen-reveal" class="screen">
+  <div class="phase-indicator">
+    <div class="phase-dot done"></div><div class="phase-dot done"></div>
+    <div class="phase-dot done"></div><div class="phase-dot done"></div><div class="phase-dot active"></div>
+  </div>
+  <div class="winner-banner" id="winner-banner">
+    <div style="font-size:.9rem;opacity:.8">CLASS WINNER</div>
+    <h2 id="winner-name"></h2>
+    <div id="winner-author" style="opacity:.8"></div>
+  </div>
+  <div id="ai-match-note" class="card" style="text-align:center;margin-bottom:16px"></div>
+  <table class="leaderboard">
+    <thead><tr><th>Hero</th><th>Author</th><th>Peer votes</th><th>Final votes</th><th>AI score</th></tr></thead>
+    <tbody id="leaderboard-body"></tbody>
+  </table>
+</div>
+
+<!-- ── Story Modal ─────────────────────────────────────────────────────────── -->
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     INTRUSION DETECTION MODE SCREENS
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ── SCREEN: Student Setup (Detection) ─────────────────────────────────────── -->
+<div id="screen-student-setup-detection" class="screen">
+  <h2>🔒 Network Intrusion Detection</h2>
+  <p class="subtitle">Review the network traffic before the writing phase begins.</p>
+  <div class="username-chip" id="setup-detection-username">Loading...</div>
+  
+  <div class="card">
+    <h3>📊 Network Traffic Preview</h3>
+    <p style="font-size:0.9rem;color:var(--gray);margin-bottom:12px">Scroll through the traffic logs to familiarize yourself with the data. Look for patterns!</p>
+    
+    <div style="max-height:400px;overflow-y:auto;font-family:monospace;font-size:0.8rem;background:#F5F5F5;padding:8px;border-radius:4px">
+      <table id="setup-traffic-table" style="width:100%;border-collapse:collapse">
+        <thead style="position:sticky;top:0;background:#333;color:white">
+          <tr>
+            <th style="padding:6px;text-align:left">Time</th>
+            <th style="padding:6px;text-align:left">Src IP</th>
+            <th style="padding:6px;text-align:left">Src MAC</th>
+            <th style="padding:6px;text-align:left">Dst IP</th>
+            <th style="padding:6px;text-align:left">Port</th>
+            <th style="padding:6px;text-align:left">Type</th>
+          </tr>
+        </thead>
+        <tbody id="setup-traffic-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  
+  <p class="info-chip">⏳ Waiting for instructor to start writing phase...</p>
+</div>
+
+<!-- ── SCREEN: Writing (Detection) ───────────────────────────────────────────── -->
+<div id="screen-writing-detection" class="screen">
+  <h2>Write Your Detection</h2>
+  <div class="username-chip" id="detection-username">Loading...</div>
+  <div class="timer" id="detection-timer">5:00</div>
+  
+  <div class="card">
+    <h3>📊 Network Traffic</h3>
+    <div style="max-height:250px;overflow-y:auto;font-family:monospace;font-size:0.75rem;background:#F5F5F5;padding:8px;border-radius:4px">
+      <table id="writing-traffic-table" style="width:100%;border-collapse:collapse">
+        <thead style="position:sticky;top:0;background:#333;color:white">
+          <tr>
+            <th style="padding:4px;text-align:left;font-size:0.7rem">Time</th>
+            <th style="padding:4px;text-align:left;font-size:0.7rem">Src IP</th>
+            <th style="padding:4px;text-align:left;font-size:0.7rem">Src MAC</th>
+            <th style="padding:4px;text-align:left;font-size:0.7rem">Dst IP</th>
+            <th style="padding:4px;text-align:left;font-size:0.7rem">Port</th>
+            <th style="padding:4px;text-align:left;font-size:0.7rem">Type</th>
+          </tr>
+        </thead>
+        <tbody id="writing-traffic-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h3>Your Detection Script</h3>
+    <label>Write a detection rule/script that identifies the intrusion:</label>
+    <textarea id="detection-input"
+              placeholder="Example: ALERT if [same source MAC] AND [multiple destination ports > 5] AND [time window < 20 minutes] AND [NOT single failed SSH auth]&#10;&#10;Filter MAC address correlation over time window, exclude isolated port 22 failures, flag coordinated multi-port probes..."
+              style="min-height:150px;font-family:monospace"></textarea>
+
+    <div class="btn-row">
+      <button class="btn btn-dice" onclick="getSurpriseDetection()">🎲 Surprise Me</button>
+      <button class="btn btn-primary" onclick="submitDetection()">Submit Detection Script</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN: Reveal (Detection) ─────────────────────────────────────────────── -->
+<div id="screen-reveal-detection" class="screen">
+  <h2>🔒 Detection Results</h2>
+  
+  <div class="winner-banner">
+    <div style="font-size:.9rem;opacity:.8">BEST DETECTION</div>
+    <h2 id="detection-winner-name">—</h2>
+    <div id="detection-winner-score" style="opacity:.8;font-size:1.1rem">Score: —</div>
+  </div>
+  
+  <div class="card" style="background:#FFF9E6;border:2px solid #FFD700">
+    <h3>🎯 Actual Attack Pattern</h3>
+    <p id="actual-attack-description" style="font-family:monospace;background:white;padding:12px;border-radius:4px;margin-top:8px;line-height:1.6">
+      Loading...
+    </p>
+    <button class="btn btn-secondary" onclick="showTrafficModal()" style="margin-top:12px">📊 View Full Network Traffic</button>
+  </div>
+  
+  <div class="card">
+    <h3>📊 Leaderboard</h3>
+    <table class="leaderboard">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Detection Preview</th>
+          <th>Accuracy</th>
+          <th>Specificity</th>
+          <th>Clarity</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody id="detection-leaderboard-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="polish-detection-section">
+    <h3>AI Polish Best Detection - Compare Models</h3>
+    <p style="margin-bottom:16px">Compare two AI models polishing the best detection logic.</p>
+    <div style="margin-bottom:16px" id="polish-detection-controls">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+        <div>
+          <label>Polish Model 1</label>
+          <select id="polish-detection-model-1" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:4px;font-size:0.95rem">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <div>
+          <label>Polish Model 2</label>
+          <select id="polish-detection-model-2" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:4px;font-size:0.95rem">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <label>Polish Rounds:
+          <input type="number" id="polish-detection-rounds" min="1" max="10" value="3" style="width:80px;margin-left:8px">
+        </label>
+        <button class="btn btn-primary" onclick="runDetectionPolish()">Compare Polish</button>
+      </div>
+    </div>
+    <div id="polish-detection-progress" style="display:none;margin-bottom:16px;padding:16px;background:var(--light);border-radius:6px">
+      <p style="margin-bottom:12px"><strong>Polishing with both models...</strong></p>
+      <p style="font-size:1.3rem;margin-bottom:12px">Round <span id="polish-detection-current-round">0</span> / <span id="polish-detection-total-rounds">0</span></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <p style="font-weight:bold;margin-bottom:4px">Model 1: <span id="polish-detection-model-1-name">—</span></p>
+          <p style="font-size:0.9rem;color:var(--gray);margin-bottom:4px">Round <span id="polish-detection-round-1">0</span>/<span id="polish-detection-total-1">0</span></p>
+          <p style="font-size:1.1rem">Score: <strong id="polish-detection-score-1" style="color:var(--red)">—</strong></p>
+        </div>
+        <div>
+          <p style="font-weight:bold;margin-bottom:4px">Model 2: <span id="polish-detection-model-2-name">—</span></p>
+          <p style="font-size:0.9rem;color:var(--gray);margin-bottom:4px">Round <span id="polish-detection-round-2">0</span>/<span id="polish-detection-total-2">0</span></p>
+          <p style="font-size:1.1rem">Score: <strong id="polish-detection-score-2" style="color:var(--red)">—</strong></p>
+        </div>
+      </div>
+    </div>
+    <div id="polish-detection-results" style="display:none">
+      <h4 style="margin-top:24px">Polish Complete - Model Comparison</h4>
+      <p style="color:var(--gray);margin-bottom:16px">Author: <strong id="polish-detection-author">—</strong></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px">
+        <div class="card" style="background:var(--bg-secondary);padding:20px">
+          <h5 style="margin-bottom:16px;font-size:1.2rem">Original Best Detection</h5>
+          <div style="margin-bottom:16px;line-height:1.6;font-family:monospace;background:white;padding:12px;border-radius:4px;white-space:pre-wrap">
+            <span id="polish-detection-orig-text">—</span>
+          </div>
+          <div style="margin-top:20px;padding-top:16px;border-top:2px solid #DDD">
+            <strong>AI Score:</strong> <span id="polish-detection-orig-score" style="font-size:1.3rem;color:var(--red)">—</span>
+          </div>
+        </div>
+        <div class="card" style="background:var(--primary);color:white;padding:20px">
+          <h5 style="margin-bottom:16px;font-size:1.2rem">✨ Model 1 Polish</h5>
+          <div style="margin-bottom:16px;line-height:1.6;font-family:monospace;background:rgba(255,255,255,0.2);padding:12px;border-radius:4px;white-space:pre-wrap">
+            <span id="polish-detection-new-text">—</span>
+          </div>
+          <div style="margin-top:20px;padding-top:16px;border-top:2px solid rgba(255,255,255,0.3)">
+            <strong>AI Score:</strong> <span id="polish-detection-new-score" style="font-size:1.3rem;color:#FFD700">—</span>
+          </div>
+        </div>
+        <div class="card" style="background:var(--red);color:white;padding:20px">
+          <h5 style="margin-bottom:16px;font-size:1.2rem">✨ Model 2 Polish</h5>
+          <div style="margin-bottom:16px;line-height:1.6;font-family:monospace;background:rgba(255,255,255,0.2);padding:12px;border-radius:4px;white-space:pre-wrap">
+            <span id="polish-detection-model2-text">—</span>
+          </div>
+          <div style="margin-top:20px;padding-top:16px;border-top:2px solid rgba(255,255,255,0.3)">
+            <strong>AI Score:</strong> <span id="polish-detection-model2-score" style="font-size:1.3rem;color:#FFD700">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="returnToLobby()">Return to Lobby</button>
+  </div>
+</div>
+
+<div id="story-modal" class="modal" onclick="if(event.target===this) closeStoryModal()">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeStoryModal()">&times;</button>
+    <div class="story-detail">
+      <h3 id="modal-hero-name"></h3>
+      <div class="label">Author</div>
+      <p id="modal-author"></p>
+
+      <div class="label">Hero Backstory</div>
+      <p id="modal-backstory"></p>
+
+      <div class="label">Challenge</div>
+      <p id="modal-challenge"></p>
+
+      <div class="label">Resolution</div>
+      <p id="modal-resolution"></p>
+
+      <div id="modal-scores" style="margin-top:24px; padding-top:24px; border-top:1px solid #DDD;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="detection-modal" class="modal" onclick="if(event.target===this) closeDetectionModal()">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeDetectionModal()">&times;</button>
+    <div class="story-detail">
+      <h3>🔒 Detection Logic</h3>
+      <div class="label">Author</div>
+      <p id="modal-detection-author"></p>
+
+      <div class="label">Detection Script</div>
+      <p id="modal-detection-text" style="white-space:pre-wrap;font-family:monospace;background:#f5f5f5;padding:12px;border-radius:4px;line-height:1.6"></p>
+
+      <div id="modal-detection-scores" style="margin-top:24px; padding-top:24px; border-top:1px solid #DDD;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="traffic-modal" class="modal" onclick="if(event.target===this) closeTrafficModal()">
+  <div class="modal-content" style="max-width:1000px">
+    <button class="modal-close" onclick="closeTrafficModal()">&times;</button>
+    <div class="story-detail">
+      <h3>📊 Network Traffic Log</h3>
+      <p style="color:var(--gray);margin-bottom:16px">Complete network traffic capture for this session</p>
+
+      <div style="max-height:60vh;overflow-y:auto;font-family:monospace;font-size:0.85rem;background:#F5F5F5;padding:12px;border-radius:4px">
+        <table style="width:100%;border-collapse:collapse">
+          <thead style="position:sticky;top:0;background:#333;color:white">
+            <tr>
+              <th style="padding:6px;text-align:left">Timestamp</th>
+              <th style="padding:6px;text-align:left">Source IP</th>
+              <th style="padding:6px;text-align:left">Source MAC</th>
+              <th style="padding:6px;text-align:left">Dest IP</th>
+              <th style="padding:6px;text-align:left">Port</th>
+              <th style="padding:6px;text-align:left">Protocol</th>
+              <th style="padding:6px;text-align:left">Event Type</th>
+            </tr>
+          </thead>
+          <tbody id="modal-traffic-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;background:#FFF9E6;border-radius:4px">
+        <strong>Tip:</strong> Look for patterns like repeated MAC addresses with different IPs, multiple port probes, or suspicious timing patterns.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let sessionId = null, username = null, role = null; // role: instructor | student
+let sessionMode = 'storytelling';  // 'storytelling' or 'intrusion_detection'
+let ws = null, timerInterval = null;
+let selectedReviewWinner = null, selectedFinalStory = null;
+let reviewAssignment = [];  // [storyA_id, storyB_id]
+let finalFinalists = [];
+let kserveAvailable = false;  // Whether running in OpenShift
+let availableModels = { groq: [], ollama: [], kserve: [] };  // Dynamically loaded models
+
+const API = '';   // same origin
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function show(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screenId).classList.add('active');
+}
+function badge(text) { document.getElementById('phase-badge').textContent = text; }
+
+function showAIErrors(errors) {
+  if (!errors || errors.length === 0) return;
+
+  const errorHtml = `
+    <div style="position:fixed;top:20px;right:20px;max-width:400px;background:#FEE;border:2px solid #C00;border-radius:8px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:10000">
+      <h4 style="margin:0 0 12px 0;color:#C00">⚠️ AI Model Errors</h4>
+      <p style="margin:0 0 8px 0;font-size:0.9rem">The AI model encountered errors. Stories may have default scores (5.0). Please check your model configuration.</p>
+      <div style="max-height:200px;overflow-y:auto;background:#FFF;padding:8px;border-radius:4px;font-size:0.85rem;font-family:monospace">
+        ${errors.map(e => `<div style="margin-bottom:4px">• ${e}</div>`).join('')}
+      </div>
+      <button onclick="this.parentElement.remove()" style="margin-top:12px;padding:6px 12px;background:#C00;color:white;border:none;border-radius:4px;cursor:pointer">Dismiss</button>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', errorHtml);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Idle Timer (Cloud Run auto-shutdown) ─────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INTRUSION DETECTION MODE FUNCTIONS
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function generateTraffic() {
+  try {
+    const difficulty = document.getElementById('traffic-difficulty').value;
+    const res = await api('POST', `/classroom/sessions/${sessionId}/generate-traffic?difficulty=${difficulty}`);
+    document.getElementById('traffic-entry-count').textContent = res.entries;
+    document.getElementById('traffic-status').style.display = 'block';
+  } catch(e) { alert('Error generating traffic: ' + e.message); }
+}
+
+async function loadTrafficData(tableBodyId) {
+  try {
+    const res = await api('GET', `/classroom/sessions/${sessionId}/traffic`);
+    const tbody = document.getElementById(tableBodyId);
+    tbody.innerHTML = '';
+    
+    res.entries.forEach(entry => {
+      const row = document.createElement('tr');
+      const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+      row.innerHTML = `
+        <td style="padding:4px;font-size:0.75rem">${timestamp}</td>
+        <td style="padding:4px">${entry.source_ip}</td>
+        <td style="padding:4px">${entry.source_mac}</td>
+        <td style="padding:4px">${entry.dest_ip}</td>
+        <td style="padding:4px">${entry.dest_port}</td>
+        <td style="padding:4px;font-size:0.75rem">${entry.event_type}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  } catch(e) {
+    console.error('Error loading traffic:', e);
+  }
+}
+
+async function getSurpriseDetection() {
+  try {
+    const res = await api('GET', `/classroom/sessions/${sessionId}/surprise-detection`);
+    document.getElementById('detection-input').value = res.detection_text;
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function submitDetection() {
+  const text = document.getElementById('detection-input').value.trim();
+  if (!text) {
+    alert('Please write your detection analysis');
+    return;
+  }
+  
+  try {
+    await api('POST', `/classroom/sessions/${sessionId}/detections/${username}`, {
+      detection_text: text,
+      ai_generated: false
+    });
+    // Show waiting screen
+    document.querySelector('#screen-writing-detection .card').innerHTML = '<h3>✅ Detection submitted! Waiting for AI grading…</h3>';
+    document.querySelector('#screen-writing-detection .btn-row').style.display = 'none';
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function polishDetection() {
+  try {
+    await api('POST', `/classroom/sessions/${sessionId}/polish-detection`, { rounds: 3 });
+    alert('Polishing started! This will take a minute...');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function returnToLobby() {
+  show('lobby');
+  badge('LOBBY');
+  sessionId = null;
+  username = null;
+  role = null;
+  sessionMode = 'storytelling';
+  if (ws) ws.close();
+}
+
+let idleTimerInterval = null;
+let idleCountdownInterval = null;
+let remainingSeconds = 0;
+
+function updateCountdownDisplay() {
+  const countdown = document.getElementById('idle-countdown');
+  if (!countdown) return;
+
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  countdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+  // Warning color if less than 10 minutes
+  if (remainingSeconds < 600) {
+    countdown.style.color = '#dc3545';
+  } else {
+    countdown.style.color = '#333';
+  }
+
+  // Switch to more frequent server checks when < 5 minutes
+  if (remainingSeconds === 300 && idleTimerInterval) {
+    // Switch from 5-minute checks to 20-second checks
+    clearInterval(idleTimerInterval);
+    idleTimerInterval = setInterval(checkIdleStatus, 20000);
+    console.log('Switching to 20-second server sync (< 5 min remaining)');
+  }
+
+  // Decrement for next tick
+  if (remainingSeconds > 0) {
+    remainingSeconds--;
+  }
+}
+
+async function checkIdleStatus() {
+  try {
+    const status = await api('GET', '/idle-status');
+    if (status.idle_shutdown_enabled && role === 'instructor') {
+      const timer = document.getElementById('idle-timer');
+      timer.style.display = 'block';
+
+      // Update remaining time from server
+      remainingSeconds = status.remaining_seconds || 0;
+      updateCountdownDisplay();
+    }
+  } catch (e) {
+    console.log('Idle status check failed (normal if not cloud):', e);
+  }
+}
+
+async function extendSession() {
+  try {
+    const result = await api('POST', '/extend-session');
+    console.log('Session extended:', result);
+
+    // Reset to 5-minute interval checks (session has been extended)
+    if (idleTimerInterval) clearInterval(idleTimerInterval);
+    idleTimerInterval = setInterval(checkIdleStatus, 300000); // 5 minutes
+
+    await checkIdleStatus();
+
+    // Show confirmation
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Extended!';
+    btn.style.background = '#28a745';
+    setTimeout(() => {
+      btn.textContent = originalText;
+    }, 2000);
+  } catch (e) {
+    console.error('Failed to extend session:', e);
+    alert('Failed to extend session');
+  }
+}
+
+function startIdleTimer() {
+  // Clear any existing intervals
+  if (idleTimerInterval) clearInterval(idleTimerInterval);
+  if (idleCountdownInterval) clearInterval(idleCountdownInterval);
+
+  // Initial check to get server time
+  checkIdleStatus();
+
+  // Update display every second for smooth countdown
+  idleCountdownInterval = setInterval(updateCountdownDisplay, 1000);
+
+  // Sync with server every 5 minutes (will switch to 20s when < 5 min remaining)
+  idleTimerInterval = setInterval(checkIdleStatus, 300000); // 5 minutes
+}
+
+// ── WebSocket ────────────────────────────────────────────────────────────────
+function connectWS(sid) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/classroom/sessions/${sid}/ws`);
+  ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
+  ws.onclose = () => setTimeout(() => connectWS(sid), 2000);
+}
+
+function handleEvent(ev) {
+  if (ev.event === 'session.state') {
+    // Update session mode if provided
+    if (ev.mode) {
+      sessionMode = ev.mode;
+    }
+
+    // For detection mode in SETUP, show traffic preview to students
+    if (ev.mode === 'intrusion_detection' && ev.phase === 'setup' && role === 'student') {
+      show('student-setup-detection');
+      document.getElementById('setup-detection-username').textContent = username;
+      loadTrafficData('setup-traffic-tbody');
+    }
+
+    // Update arc preview for waiting students (storytelling mode)
+    if (ev.arc && ev.arc.step1) {
+      document.getElementById('arc-preview-1').textContent = '1. ' + ev.arc.step1;
+      document.getElementById('arc-preview-2').textContent = '2. ' + ev.arc.step2;
+      document.getElementById('arc-preview-3').textContent = '3. ' + ev.arc.step3;
+      document.getElementById('arc-preview').style.display = 'block';
+    }
+  }
+  if (ev.event === 'student.joined') {
+    const chip = document.getElementById('student-count-chip');
+    if (chip) chip.textContent = ev.student_count + ' students connected';
+    if (role === 'instructor') updateInstructorWritingView();
+  }
+  if (ev.event === 'story.submitted') {
+    if (role === 'instructor') updateInstructorWritingView();
+  }
+  if (ev.event === 'ai.graded.review') {
+    if (role === 'instructor') {
+      updateInstructorReviewView();
+      if (ev.errors && ev.errors.length > 0) {
+        showAIErrors(ev.errors);
+      }
+    }
+  }
+  if (ev.event === 'phase.writing') startWritingPhase(ev.deadline);
+  if (ev.event === 'phase.review') startReviewPhase(ev.assignments);
+  if (ev.event === 'phase.final_vote') startFinalVotePhase(ev.finalists);
+  if (ev.event === 'phase.reveal') showReveal(ev);
+  if (ev.event === 'vote.progress') updateVoteProgress(ev);
+  if (ev.event === 'final_vote.progress') updateFinalVoteProgress(ev);
+  if (ev.event === 'polish.progress') updatePolishProgress(ev);
+  if (ev.event === 'polish.complete') showPolishResults(ev);
+  if (ev.event === 'polish.progress.model1') updatePolishProgressModel1(ev);
+  if (ev.event === 'polish.progress.model2') updatePolishProgressModel2(ev);
+  if (ev.event === 'polish.compare.complete') showPolishCompareResults(ev);
+
+  // Detection mode events
+  if (ev.event === 'traffic.generated') {
+    document.getElementById('traffic-status').style.display = 'block';
+    document.getElementById('traffic-entry-count').textContent = ev.entry_count;
+  }
+  if (ev.event === 'detection.submitted') {
+    if (role === 'instructor') updateInstructorWritingView();
+  }
+
+  // Detection polish events
+  if (ev.event === 'polish.detection.progress.model1') updateDetectionPolishProgressModel1(ev);
+  if (ev.event === 'polish.detection.progress.model2') updateDetectionPolishProgressModel2(ev);
+  if (ev.event === 'polish.detection.compare.complete') showDetectionPolishCompareResults(ev);
+}
+
+function updateVoteProgress(ev) {
+  if (role === 'instructor') {
+    const status = document.getElementById('instructor-peer-voting-status');
+    if (status) {
+      status.textContent = `${ev.votes_cast} / ${ev.total_students} students voted`;
+    }
+  }
+}
+
+function updateFinalVoteProgress(ev) {
+  if (role === 'instructor') {
+    const status = document.getElementById('instructor-final-voting-status');
+    if (status) {
+      status.textContent = `${ev.votes_cast} / ${ev.total_students} students voted`;
+    }
+  }
+}
+
+function updatePolishProgress(ev) {
+  console.log('Polish progress event received:', JSON.stringify(ev, null, 2));
+
+  const progressDiv = document.getElementById('polish-progress');
+  console.log('Progress div display:', progressDiv.style.display);
+
+  document.getElementById('polish-current-round').textContent = ev.round || '?';
+  document.getElementById('polish-total-rounds').textContent = ev.total_rounds || '?';
+
+  if (ev.score) {
+    let scoreText;
+    if (typeof ev.score.composite === 'number') {
+      scoreText = ev.score.composite.toFixed(2);
+    } else if (ev.score.criterion1 && ev.score.criterion2 && ev.score.criterion3) {
+      scoreText = ((ev.score.criterion1 + ev.score.criterion2 + ev.score.criterion3) / 3).toFixed(2);
+    } else {
+      scoreText = 'calculating...';
+    }
+    console.log('Setting progress score to:', scoreText);
+    document.getElementById('polish-current-score').textContent = scoreText;
+  } else {
+    console.log('No score in progress event');
+    document.getElementById('polish-current-score').textContent = 'calculating...';
+  }
+}
+
+function updatePolishProgressModel1(ev) {
+  console.log('Model 1 progress - Round:', ev.round, 'Score:', ev.score);
+  document.getElementById('polish-current-round').textContent = ev.round || '?';
+  document.getElementById('polish-round-1').textContent = ev.round || '?';
+
+  if (ev.score) {
+    console.log('Model 1 score details:', {
+      criterion1: ev.score.criterion1,
+      criterion2: ev.score.criterion2,
+      criterion3: ev.score.criterion3,
+      composite: ev.score.composite
+    });
+    const comp = typeof ev.score.composite === 'number'
+      ? ev.score.composite.toFixed(2)
+      : ((ev.score.criterion1 + ev.score.criterion2 + ev.score.criterion3) / 3).toFixed(2);
+    console.log('Model 1 calculated composite:', comp);
+    document.getElementById('polish-score-1').textContent = comp;
+  } else {
+    console.warn('Model 1 progress event missing score!');
+  }
+}
+
+function updatePolishProgressModel2(ev) {
+  console.log('Model 2 progress - Round:', ev.round, 'Score:', ev.score);
+  document.getElementById('polish-current-round').textContent = ev.round || '?';
+  document.getElementById('polish-round-2').textContent = ev.round || '?';
+
+  if (ev.score) {
+    console.log('Model 2 score details:', {
+      criterion1: ev.score.criterion1,
+      criterion2: ev.score.criterion2,
+      criterion3: ev.score.criterion3,
+      composite: ev.score.composite
+    });
+    const comp = typeof ev.score.composite === 'number'
+      ? ev.score.composite.toFixed(2)
+      : ((ev.score.criterion1 + ev.score.criterion2 + ev.score.criterion3) / 3).toFixed(2);
+    console.log('Model 2 calculated composite:', comp);
+    document.getElementById('polish-score-2').textContent = comp;
+  } else {
+    console.warn('Model 2 progress event missing score!');
+  }
+}
+
+function showPolishResults(ev) {
+  console.log('Polish complete event received:', JSON.stringify(ev, null, 2));
+
+  // Hide progress, show results
+  document.getElementById('polish-progress').style.display = 'none';
+  document.getElementById('polish-results').style.display = 'block';
+
+  // Show author
+  if (ev.author) {
+    document.getElementById('polish-author').textContent = ev.author;
+  }
+
+  // Helper to calculate composite from score object
+  function getComposite(score) {
+    console.log('Calculating composite for score:', score);
+    if (!score) return '—';
+    if (typeof score.composite === 'number') return score.composite.toFixed(2);
+    if (score.criterion1 && score.criterion2 && score.criterion3) {
+      const comp = ((score.criterion1 + score.criterion2 + score.criterion3) / 3).toFixed(2);
+      console.log('Calculated composite:', comp);
+      return comp;
+    }
+    return '—';
+  }
+
+  // Original story
+  console.log('Setting original story:', ev.original);
+  if (ev.original) {
+    document.getElementById('polish-orig-hero').textContent = ev.original.hero || '—';
+    document.getElementById('polish-orig-backstory').textContent = ev.original.hero_backstory || '—';
+    document.getElementById('polish-orig-challenge').textContent = ev.original.challenge || '—';
+    document.getElementById('polish-orig-resolution').textContent = ev.original.resolution || '—';
+    const origScore = getComposite(ev.original.score);
+    console.log('Original score display:', origScore);
+    document.getElementById('polish-orig-score').textContent = origScore;
+  } else {
+    console.error('No original data in event!');
+  }
+
+  // Polished story
+  console.log('Setting polished story:', ev.polished);
+  if (ev.polished) {
+    const hero = ev.polished.hero || '—';
+    const backstory = ev.polished.hero_backstory || '—';
+    const challenge = ev.polished.challenge || '—';
+    const resolution = ev.polished.resolution || '—';
+
+    console.log('Polished hero:', hero);
+    console.log('Polished backstory:', backstory);
+    console.log('Polished challenge:', challenge);
+    console.log('Polished resolution:', resolution);
+
+    document.getElementById('polish-new-hero').textContent = hero;
+    document.getElementById('polish-new-backstory').textContent = backstory;
+    document.getElementById('polish-new-challenge').textContent = challenge;
+    document.getElementById('polish-new-resolution').textContent = resolution;
+
+    const polishScore = getComposite(ev.polished.score);
+    console.log('Polished score display:', polishScore);
+    document.getElementById('polish-new-score').textContent = polishScore;
+
+    console.log('Polished story elements set successfully');
+  } else {
+    console.error('No polished data in event!');
+  }
+
+  console.log('Polish results display complete');
+}
+
+function showPolishCompareResults(ev) {
+  console.log('Polish compare complete event received:', ev);
+
+  // Hide progress, show results
+  document.getElementById('polish-progress').style.display = 'none';
+  document.getElementById('polish-results').style.display = 'block';
+
+  // Show author
+  if (ev.author) {
+    document.getElementById('polish-author').textContent = ev.author;
+  }
+
+  // Helper to calculate composite from score object
+  function getComposite(score) {
+    if (!score) return '—';
+    if (typeof score.composite === 'number') return score.composite.toFixed(2);
+    if (score.criterion1 && score.criterion2 && score.criterion3) {
+      return ((score.criterion1 + score.criterion2 + score.criterion3) / 3).toFixed(2);
+    }
+    return '—';
+  }
+
+  // Original story
+  if (ev.original) {
+    document.getElementById('polish-orig-hero').textContent = ev.original.hero || '—';
+    document.getElementById('polish-orig-backstory').textContent = ev.original.hero_backstory || '—';
+    document.getElementById('polish-orig-challenge').textContent = ev.original.challenge || '—';
+    document.getElementById('polish-orig-resolution').textContent = ev.original.resolution || '—';
+    document.getElementById('polish-orig-score').textContent = getComposite(ev.original.score);
+  }
+
+  // Model 1 polished story
+  if (ev.model1) {
+    document.getElementById('polish-new-hero').textContent = ev.model1.hero || '—';
+    document.getElementById('polish-new-backstory').textContent = ev.model1.hero_backstory || '—';
+    document.getElementById('polish-new-challenge').textContent = ev.model1.challenge || '—';
+    document.getElementById('polish-new-resolution').textContent = ev.model1.resolution || '—';
+    document.getElementById('polish-new-score').textContent = getComposite(ev.model1.score);
+  }
+
+  // Model 2 polished story (need to add these IDs to HTML)
+  if (ev.model2) {
+    document.getElementById('polish-model2-hero').textContent = ev.model2.hero || '—';
+    document.getElementById('polish-model2-backstory').textContent = ev.model2.hero_backstory || '—';
+    document.getElementById('polish-model2-challenge').textContent = ev.model2.challenge || '—';
+    document.getElementById('polish-model2-resolution').textContent = ev.model2.resolution || '—';
+    document.getElementById('polish-model2-score').textContent = getComposite(ev.model2.score);
+  }
+
+  console.log('Polish compare results display complete');
+}
+
+// Detection polish progress handlers
+function updateDetectionPolishProgressModel1(ev) {
+  console.log('Detection Model 1 progress - Round:', ev.round, 'Score:', ev.score);
+  document.getElementById('polish-detection-current-round').textContent = ev.round || '?';
+  document.getElementById('polish-detection-round-1').textContent = ev.round || '?';
+
+  if (ev.score) {
+    const comp = typeof ev.score.composite === 'number'
+      ? ev.score.composite.toFixed(2)
+      : ((ev.score.accuracy + ev.score.specificity + ev.score.clarity) / 3).toFixed(2);
+    document.getElementById('polish-detection-score-1').textContent = comp;
+  }
+}
+
+function updateDetectionPolishProgressModel2(ev) {
+  console.log('Detection Model 2 progress - Round:', ev.round, 'Score:', ev.score);
+  document.getElementById('polish-detection-current-round').textContent = ev.round || '?';
+  document.getElementById('polish-detection-round-2').textContent = ev.round || '?';
+
+  if (ev.score) {
+    const comp = typeof ev.score.composite === 'number'
+      ? ev.score.composite.toFixed(2)
+      : ((ev.score.accuracy + ev.score.specificity + ev.score.clarity) / 3).toFixed(2);
+    document.getElementById('polish-detection-score-2').textContent = comp;
+  }
+}
+
+function showDetectionPolishCompareResults(ev) {
+  console.log('Detection polish compare complete event received:', ev);
+
+  // Hide progress, show results
+  document.getElementById('polish-detection-progress').style.display = 'none';
+  document.getElementById('polish-detection-results').style.display = 'block';
+
+  // Show author
+  if (ev.author) {
+    document.getElementById('polish-detection-author').textContent = ev.author;
+  }
+
+  // Helper to calculate composite from detection score object
+  function getDetectionComposite(score) {
+    if (!score) return '—';
+    if (typeof score.composite === 'number') return score.composite.toFixed(2);
+    if (score.accuracy && score.specificity && score.clarity) {
+      return ((score.accuracy + score.specificity + score.clarity) / 3).toFixed(2);
+    }
+    return '—';
+  }
+
+  // Original detection
+  if (ev.original) {
+    document.getElementById('polish-detection-orig-text').textContent = ev.original.detection_text || '—';
+    document.getElementById('polish-detection-orig-score').textContent = getDetectionComposite(ev.original.score);
+  }
+
+  // Model 1 polished detection
+  if (ev.model1) {
+    document.getElementById('polish-detection-new-text').textContent = ev.model1.detection_text || '—';
+    document.getElementById('polish-detection-new-score').textContent = getDetectionComposite(ev.model1.score);
+  }
+
+  // Model 2 polished detection
+  if (ev.model2) {
+    document.getElementById('polish-detection-model2-text').textContent = ev.model2.detection_text || '—';
+    document.getElementById('polish-detection-model2-score').textContent = getDetectionComposite(ev.model2.score);
+  }
+
+  console.log('Detection polish compare results display complete');
+}
+
+// ── Lobby ─────────────────────────────────────────────────────────────────────
+async function joinSession() {
+  const code = document.getElementById('session-code-input').value.trim().toUpperCase();
+  if (!code) return;
+  try {
+    const res = await api('POST', `/classroom/sessions/${code}/join`);
+    sessionId = code; username = res.username; role = 'student';
+    document.getElementById('my-username-display').textContent = username;
+    document.getElementById('writing-username').textContent = username;
+    connectWS(sessionId);
+    show('waiting'); badge('WAITING');
+  } catch(e) { alert('Could not join: ' + e.message); }
+}
+
+async function createSession() {
+  // Show mode selector instead of creating session immediately
+  document.getElementById('mode-selector-card').style.display = 'block';
+  document.querySelector('#session-code-input').closest('.card').style.display = 'none';
+}
+
+async function createInstructorSession() {
+  try {
+    const mode = document.getElementById('mode-select').value;
+    sessionMode = mode;
+
+    const res = await api('POST', '/classroom/sessions', { mode: mode });
+    sessionId = res.id; role = 'instructor';
+    document.getElementById('display-session-id').textContent = res.id;
+    connectWS(sessionId);
+    show('setup'); badge('SETUP');
+    startIdleTimer();
+
+    // Show/hide mode-specific cards
+    if (mode === 'intrusion_detection') {
+      document.getElementById('detection-setup-card').style.display = 'block';
+      document.getElementById('detection-template-card').style.display = 'block';
+      document.getElementById('story-arc-card').style.display = 'none';
+
+      // Update rubric defaults for detection mode (aligned with backend defaults)
+      document.getElementById('rub1').value = 'How accurate is the detection? (Does it identify the actual attack?)';
+      document.getElementById('rub2').value = 'How specific is the detection? (Does it avoid false positives?)';
+      document.getElementById('rub3').value = 'How clear and efficient is the detection logic?';
+
+      document.getElementById('start-sprint-btn').textContent = '▶ Start Detection Challenge';
+    } else {
+      document.getElementById('detection-setup-card').style.display = 'none';
+      document.getElementById('detection-template-card').style.display = 'none';
+      document.getElementById('story-arc-card').style.display = 'block';
+      document.getElementById('start-sprint-btn').textContent = '▶ Start 5-Minute Sprint';
+    }
+
+    // Load saved API key into field
+    loadSavedApiKey('groq-api-key');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
+// ── Model Settings ────────────────────────────────────────────────────────────
+function getModelOptions(provider) {
+  // Return dynamically loaded models
+  const providerModels = availableModels[provider] || [];
+
+  // Map to the format needed for dropdowns (provider|endpoint|model_name)
+  return providerModels.map(m => {
+    let endpoint;
+    if (provider === 'groq') {
+      endpoint = 'https://api.groq.com/openai/v1';
+    } else if (provider === 'kserve') {
+      // KServe endpoint is model-specific
+      endpoint = `http://${m.name}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+    } else if (provider === 'ollama') {
+      endpoint = 'http://localhost:11434/v1';
+    }
+
+    return {
+      value: `${provider}|${endpoint}|${m.name}`,
+      label: m.label
+    };
+  });
+}
+
+async function loadConfig() {
+  try {
+    const config = await api('GET', '/classroom/config');
+    kserveAvailable = config.kserve_available || false;
+    console.log('Config loaded. KServe available:', kserveAvailable);
+
+    // Load available models from each provider
+    const [groqData, ollamaData, kserveData] = await Promise.all([
+      api('GET', '/classroom/models/groq').catch(() => ({models: []})),
+      api('GET', '/classroom/models/ollama').catch(() => ({models: []})),
+      kserveAvailable ? api('GET', '/classroom/models/kserve').catch(() => ({models: []})) : Promise.resolve({models: []}),
+    ]);
+
+    availableModels.groq = groqData.models || [];
+    availableModels.ollama = ollamaData.models || [];
+    availableModels.kserve = kserveData.models || [];
+
+    console.log('Available models:', availableModels);
+
+    // Populate provider dropdowns - always show Groq (user can enter API key)
+    const providerSelect = document.getElementById('model-provider');
+    const gradingProviderSelect = document.getElementById('grading-provider');
+
+    if (providerSelect && gradingProviderSelect) {
+      let options = '<option value="groq">Groq (Cloud)</option>';
+
+      if (kserveAvailable && availableModels.kserve.length > 0) {
+        options += '<option value="kserve">OpenShift KServe (Local)</option>';
+      }
+      if (availableModels.ollama.length > 0) {
+        options += '<option value="ollama">Ollama (Mac/Windows)</option>';
+      }
+
+      providerSelect.innerHTML = options;
+      gradingProviderSelect.innerHTML = options;
+
+      // Set default based on availability
+      let defaultProvider = 'groq';
+      if (kserveAvailable && availableModels.kserve.length > 0) {
+        defaultProvider = 'kserve';
+      } else if (availableModels.ollama.length > 0) {
+        defaultProvider = 'ollama';
+      }
+
+      providerSelect.value = defaultProvider;
+      gradingProviderSelect.value = defaultProvider;
+    }
+
+    // Initialize model dropdowns
+    updateModelOptions();
+    updateGradingModelOptions();
+  } catch(e) {
+    console.error('Failed to load config:', e);
+    kserveAvailable = false;
+  }
+}
+
+function saveApiKey(inputId) {
+  const apiKeyInput = document.getElementById(inputId);
+  if (apiKeyInput && apiKeyInput.value) {
+    sessionStorage.setItem('groq_api_key', apiKeyInput.value);
+  }
+}
+
+function loadSavedApiKey(inputId) {
+  const savedKey = sessionStorage.getItem('groq_api_key');
+  if (savedKey) {
+    const apiKeyInput = document.getElementById(inputId);
+    if (apiKeyInput) {
+      apiKeyInput.value = savedKey;
+    }
+  }
+}
+
+function updateModelOptions() {
+  const provider = document.getElementById('model-provider').value;
+  const modelSelect = document.getElementById('model-name');
+
+  // Populate model dropdown with available models for this provider
+  const models = availableModels[provider] || [];
+  if (models.length === 0) {
+    modelSelect.innerHTML = '<option value="">No models available</option>';
+    return;
+  }
+
+  modelSelect.innerHTML = models.map(m =>
+    `<option value="${m.name}">${m.label}</option>`
+  ).join('');
+}
+
+function updateGradingModelOptions() {
+  const provider = document.getElementById('grading-provider').value;
+  const modelSelect = document.getElementById('grading-model-name');
+
+  // Populate model dropdown with available models for this provider
+  const models = availableModels[provider] || [];
+  if (models.length === 0) {
+    modelSelect.innerHTML = '<option value="">No models available</option>';
+    return;
+  }
+
+  modelSelect.innerHTML = models.map(m =>
+    `<option value="${m.name}">${m.label}</option>`
+  ).join('');
+}
+
+function populatePolishModels(currentConfig) {
+  console.log('populatePolishModels called with config:', currentConfig);
+
+  // Always include Groq - API key will be pulled from sessionStorage when polish runs
+  let allOptions = [
+    ...getModelOptions('groq'),
+    ...getModelOptions('ollama'),
+  ];
+
+  // Add KServe if running in OpenShift
+  if (kserveAvailable) {
+    allOptions = [
+      ...getModelOptions('kserve'),
+      ...allOptions,
+    ];
+  }
+
+  console.log('Total options:', allOptions.length, allOptions);
+
+  const select1 = document.getElementById('polish-model-1');
+  const select2 = document.getElementById('polish-model-2');
+
+  if (!select1 || !select2) {
+    console.error('Polish model select elements not found!');
+    return;
+  }
+
+  const optionsHtml = allOptions.map(opt =>
+    `<option value="${opt.value}">${opt.label}</option>`
+  ).join('');
+
+  console.log('Setting select innerHTML to:', optionsHtml.substring(0, 100) + '...');
+
+  select1.innerHTML = optionsHtml;
+  select2.innerHTML = optionsHtml;
+
+  // Default select1 to current session config
+  if (currentConfig) {
+    const currentValue = `${currentConfig.provider}|${currentConfig.endpoint}|${currentConfig.model_name}`;
+    console.log('Looking for current value:', currentValue);
+    // Check if this value exists in the options before trying to set it
+    if (allOptions.some(opt => opt.value === currentValue)) {
+      select1.value = currentValue;
+      console.log('Set select1 to current config');
+    } else {
+      console.log('Current config not found in options');
+    }
+  }
+
+  console.log('populatePolishModels complete');
+}
+
+function populateDetectionPolishModels(currentConfig) {
+  console.log('populateDetectionPolishModels called with config:', currentConfig);
+
+  // Always include Groq - API key will be pulled from sessionStorage when polish runs
+  let allOptions = [
+    ...getModelOptions('groq'),
+    ...getModelOptions('ollama'),
+  ];
+
+  // Add KServe if running in OpenShift
+  if (kserveAvailable) {
+    allOptions = [
+      ...getModelOptions('kserve'),
+      ...allOptions,
+    ];
+  }
+
+  const select1 = document.getElementById('polish-detection-model-1');
+  const select2 = document.getElementById('polish-detection-model-2');
+
+  if (!select1 || !select2) {
+    console.error('Polish detection model select elements not found!');
+    return;
+  }
+
+  const optionsHtml = allOptions.map(opt =>
+    `<option value="${opt.value}">${opt.label}</option>`
+  ).join('');
+
+  select1.innerHTML = optionsHtml;
+  select2.innerHTML = optionsHtml;
+
+  // Default select1 to current session config
+  if (currentConfig) {
+    const currentValue = `${currentConfig.provider}|${currentConfig.endpoint}|${currentConfig.model_name}`;
+    if (allOptions.some(opt => opt.value === currentValue)) {
+      select1.value = currentValue;
+      console.log('Set select1 to current config for detection');
+    }
+  }
+
+  console.log('populateDetectionPolishModels complete');
+}
+
+async function startWriting() {
+  const rubric = { criterion1: document.getElementById('rub1').value,
+                   criterion2: document.getElementById('rub2').value,
+                   criterion3: document.getElementById('rub3').value };
+
+  // Get generation model config
+  const provider = document.getElementById('model-provider').value;
+  const modelName = document.getElementById('model-name').value;
+  const apiKey = document.getElementById('groq-api-key').value;
+
+  let endpoint;
+  if (provider === 'groq') {
+    endpoint = 'https://api.groq.com/openai/v1';
+  } else if (provider === 'kserve') {
+    // KServe endpoint is model-specific
+    endpoint = `http://${modelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+  } else if (provider === 'ollama') {
+    endpoint = 'http://localhost:11434/v1';
+  }
+
+  const modelConfig = {
+    provider: provider,
+    endpoint: endpoint,
+    model_name: modelName,
+    api_key: apiKey
+  };
+
+  // Get grading model config
+  const gradingProvider = document.getElementById('grading-provider').value;
+  const gradingModelName = document.getElementById('grading-model-name').value;
+  const gradingApiKey = document.getElementById('groq-api-key').value;
+
+  let gradingEndpoint;
+  if (gradingProvider === 'groq') {
+    gradingEndpoint = 'https://api.groq.com/openai/v1';
+  } else if (gradingProvider === 'kserve') {
+    gradingEndpoint = `http://${gradingModelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+  } else if (gradingProvider === 'ollama') {
+    gradingEndpoint = 'http://localhost:11434/v1';
+  }
+
+  const gradingConfig = {
+    provider: gradingProvider,
+    endpoint: gradingEndpoint,
+    model_name: gradingModelName,
+    api_key: gradingApiKey
+  };
+
+  // Mode-specific setup
+  if (sessionMode === 'intrusion_detection') {
+    const detectionTemplate = document.getElementById('detection-template').value;
+    await api('PUT', `/classroom/sessions/${sessionId}/arc`, { step1: detectionTemplate, step2: '', step3: '' });
+  } else {
+    const arc = { step1: document.getElementById('arc1').value,
+                  step2: document.getElementById('arc2').value,
+                  step3: document.getElementById('arc3').value };
+    await api('PUT', `/classroom/sessions/${sessionId}/arc`, arc);
+  }
+
+  await api('PUT', `/classroom/sessions/${sessionId}/rubric`, rubric);
+  await api('PUT', `/classroom/sessions/${sessionId}/model`, modelConfig);
+  await api('PUT', `/classroom/sessions/${sessionId}/grading-model`, gradingConfig);
+  await api('POST', `/classroom/sessions/${sessionId}/start`);
+  startWritingPhase(null);
+}
+
+// ── Writing phase ─────────────────────────────────────────────────────────────
+function startWritingPhase(deadline) {
+  badge('WRITING');
+
+  if (role === 'instructor') {
+    show('instructor-writing');
+    document.getElementById('instructor-writing-session-id').textContent = sessionId;
+
+    // Update subtitle based on mode
+    const subtitle = sessionMode === 'intrusion_detection'
+      ? 'Students are developing network detection logic. Monitor submissions below.'
+      : 'Students are crafting their stories. Monitor submissions below.';
+    document.getElementById('instructor-writing-subtitle').textContent = subtitle;
+
+    // Show traffic card for detection mode
+    const trafficCard = document.getElementById('instructor-writing-traffic-card');
+    if (trafficCard) {
+      trafficCard.style.display = sessionMode === 'intrusion_detection' ? 'block' : 'none';
+    }
+
+    const end = deadline ? new Date(deadline).getTime() : Date.now() + 120000;
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      const rem = Math.max(0, end - Date.now());
+      const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
+      const el = document.getElementById('instructor-writing-timer');
+      el.textContent = m + ':' + String(s).padStart(2,'0');
+      el.className = 'timer' + (rem < 30000 ? ' urgent' : '');
+      if (rem === 0) clearInterval(timerInterval);
+    }, 500);
+    updateInstructorWritingView();
+    return;
+  }
+
+  // Student view
+  if (sessionMode === 'intrusion_detection') {
+    show('writing-detection');
+    document.getElementById('detection-username').textContent = username;
+    loadTrafficData('writing-traffic-tbody');
+
+    const end = deadline ? new Date(deadline).getTime() : Date.now() + 120000;
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      const rem = Math.max(0, end - Date.now());
+      const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
+      const el = document.getElementById('detection-timer');
+      el.textContent = m + ':' + String(s).padStart(2,'0');
+      el.className = 'timer' + (rem < 30000 ? ' urgent' : '');
+      if (rem === 0) clearInterval(timerInterval);
+    }, 500);
+  } else {
+    show('writing');
+    const end = deadline ? new Date(deadline).getTime() : Date.now() + 120000;
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      const rem = Math.max(0, end - Date.now());
+      const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
+      const el = document.getElementById('countdown');
+      el.textContent = m + ':' + String(s).padStart(2,'0');
+      el.className = 'timer' + (rem < 30000 ? ' urgent' : '');
+      if (rem === 0) clearInterval(timerInterval);
+    }, 500);
+  }
+}
+
+async function updateInstructorWritingView() {
+  try {
+    const data = await api('GET', `/classroom/sessions/${sessionId}/debug`);
+    const submitted = sessionMode === 'intrusion_detection'
+      ? Object.values(data.detection_prompts || {}).length
+      : Object.values(data.stories || {}).length;
+    const total = data.students.length;
+    const itemType = sessionMode === 'intrusion_detection' ? 'detections' : 'stories';
+    document.getElementById('instructor-submission-count').textContent = `${submitted} / ${total} ${itemType} submitted`;
+
+    const list = document.getElementById('instructor-student-list');
+    list.innerHTML = data.students.map(s =>
+      `<span class="info-chip">${s}</span>`
+    ).join('');
+  } catch(e) { console.error('Failed to update instructor view:', e); }
+}
+
+async function surpriseMe() {
+  try {
+    const data = await api('GET', `/classroom/sessions/${sessionId}/surprise`);
+    document.getElementById('w-hero-name').value = data.hero_name || '';
+    document.getElementById('w-backstory').value = data.hero_backstory || '';
+    document.getElementById('w-challenge').value = data.challenge || '';
+    document.getElementById('w-resolution').value = data.resolution || '';
+  } catch(e) { alert('Surprise Me failed: ' + e.message); }
+}
+
+async function submitStory() {
+  const body = {
+    hero_name: document.getElementById('w-hero-name').value,
+    hero_backstory: document.getElementById('w-backstory').value,
+    challenge: document.getElementById('w-challenge').value,
+    resolution: document.getElementById('w-resolution').value,
+  };
+  if (!body.hero_name || !body.hero_backstory || !body.challenge || !body.resolution)
+    return alert('Please fill in all four fields.');
+
+  try {
+    await api('POST', `/classroom/sessions/${sessionId}/stories/${username}`, body);
+    document.querySelector('#screen-writing .card').innerHTML = '<h3>✅ Story submitted! Waiting for peer review…</h3>';
+    document.querySelector('#screen-writing .btn-row').style.display = 'none';
+  } catch (error) {
+    // Show error message (likely content moderation failure)
+    alert(error.message || 'Story submission failed. Please check your content and try again.');
+    // Keep the form filled so student can edit and resubmit
+  }
+}
+
+// ── Review phase ──────────────────────────────────────────────────────────────
+async function startReviewPhase(assignments) {
+  badge(sessionMode === 'intrusion_detection' ? 'AI GRADING' : 'PEER REVIEW');
+
+  if (role === 'instructor') {
+    show('instructor-review');
+    document.getElementById('instructor-review-session-id').textContent = sessionId;
+
+    // Update screen text based on mode
+    if (sessionMode === 'intrusion_detection') {
+      document.getElementById('instructor-review-title').innerHTML = 'AI Grading <span style="font-size:1rem;color:var(--gray)">— Instructor</span>';
+      document.getElementById('instructor-review-subtitle').textContent = 'AI is grading detection submissions. Results will appear below.';
+      document.getElementById('instructor-peer-voting-card').style.display = 'none';
+
+      // Update table headers for detection mode
+      document.getElementById('instructor-review-scores-header').innerHTML = `
+        <th>Author</th>
+        <th>Detection Preview</th>
+        <th>Accuracy</th>
+        <th>Specificity</th>
+        <th>Clarity</th>
+        <th>Composite</th>
+      `;
+    } else {
+      document.getElementById('instructor-review-title').innerHTML = 'Peer Review <span style="font-size:1rem;color:var(--gray)">— Instructor</span>';
+      document.getElementById('instructor-review-subtitle').textContent = 'Students are voting on story pairs. AI grading complete.';
+      document.getElementById('instructor-peer-voting-card').style.display = 'block';
+
+      // Ensure story mode headers
+      document.getElementById('instructor-review-scores-header').innerHTML = `
+        <th>Story</th>
+        <th>Author</th>
+        <th>Criterion 1</th>
+        <th>Criterion 2</th>
+        <th>Criterion 3</th>
+        <th>Composite</th>
+      `;
+    }
+
+    await updateInstructorReviewView();
+    return;
+  }
+
+  // Student view
+  show('review');
+  if (!assignments || !username || !assignments[username]) return;
+  reviewAssignment = assignments[username];
+  renderStoryPair('review-pair', reviewAssignment, (chosen) => {
+    selectedReviewWinner = chosen;
+    document.getElementById('submit-review-btn').style.display = 'inline-block';
+  });
+}
+
+async function updateInstructorReviewView() {
+  try {
+    const data = await api('GET', `/classroom/sessions/${sessionId}/debug`);
+    const tbody = document.getElementById('instructor-review-scores-body');
+
+    if (sessionMode === 'intrusion_detection') {
+      // Detection mode - show detection prompts and scores
+      const detections = Object.values(data.detection_prompts || {})
+        .filter(d => d.ai_score_review)
+        .map(d => {
+          const score = d.ai_score_review;
+          const comp = (score.accuracy + score.specificity + score.clarity) / 3;
+          return { ...d, score, comp };
+        })
+        .sort((a, b) => b.comp - a.comp);
+
+      tbody.innerHTML = detections.map(d => {
+        const preview = d.detection_text ?
+          (d.detection_text.length > 50 ? d.detection_text.substring(0, 50) + '...' : d.detection_text) :
+          '—';
+        return `<tr>
+          <td>${d.author}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.detection_text || ''}">${preview}</td>
+          <td>${d.score.accuracy.toFixed(1)}</td>
+          <td>${d.score.specificity.toFixed(1)}</td>
+          <td>${d.score.clarity.toFixed(1)}</td>
+          <td><strong>${d.comp.toFixed(1)}</strong></td>
+        </tr>`;
+      }).join('');
+    } else {
+      // Storytelling mode - show stories and scores
+      const stories = Object.values(data.stories || {})
+        .filter(story => story.ai_score_review)
+        .map(story => {
+          const score = story.ai_score_review;
+          const comp = (score.criterion1 + score.criterion2 + score.criterion3) / 3;
+          return { ...story, score, comp };
+        })
+        .sort((a, b) => b.comp - a.comp);
+
+      tbody.innerHTML = stories.map(story => {
+        return `<tr>
+          <td>${story.hero}</td>
+          <td>${story.author}</td>
+          <td>${story.score.criterion1.toFixed(1)}</td>
+          <td>${story.score.criterion2.toFixed(1)}</td>
+          <td>${story.score.criterion3.toFixed(1)}</td>
+          <td><strong>${story.comp.toFixed(1)}</strong></td>
+        </tr>`;
+      }).join('');
+
+      const voted = Object.values(data.students).filter(s => s.review_votes_cast >= 2).length;
+      document.getElementById('instructor-peer-voting-status').textContent =
+        `${voted} / ${data.students.length} students completed peer voting`;
+    }
+  } catch(e) { console.error('Failed to update instructor review:', e); }
+}
+
+async function submitReview() {
+  if (!selectedReviewWinner) return;
+  await api('POST', `/classroom/sessions/${sessionId}/vote/peer`, {
+    voter_username: username,
+    story_a_id: reviewAssignment[0],
+    story_b_id: reviewAssignment[1],
+    winner_id: selectedReviewWinner,
+  });
+  document.getElementById('screen-review').innerHTML =
+    '<div class="card" style="text-align:center"><h3>Vote cast ✓</h3><p>Waiting for final round…</p></div>';
+}
+
+// ── Final vote ────────────────────────────────────────────────────────────────
+async function startFinalVotePhase(finalists) {
+  badge('FINAL VOTE');
+
+  if (role === 'instructor') {
+    show('instructor-final');
+    document.getElementById('instructor-final-session-id').textContent = sessionId;
+    await updateInstructorFinalView(finalists);
+    return;
+  }
+
+  // Student view
+  show('final');
+  finalFinalists = finalists.map(f => f.id);
+  renderStoryPair('final-pair', finalFinalists, (chosen) => {
+    selectedFinalStory = chosen;
+    document.getElementById('submit-final-btn').style.display = 'inline-block';
+  });
+}
+
+async function updateInstructorFinalView(finalists) {
+  try {
+    const data = await api('GET', `/classroom/sessions/${sessionId}/debug`);
+    const display = document.getElementById('instructor-finalists-display');
+    display.innerHTML = finalists.map(f => {
+      const story = data.stories[f.id];
+      return `<div class="story-card">
+        <h3>${f.hero}</h3>
+        <p><strong>Author:</strong> ${f.author}</p>
+        <p>${story ? story.hero : 'Loading...'}</p>
+      </div>`;
+    }).join('');
+
+    const voted = Object.values(data.students).filter(s => s.final_vote_cast).length;
+    document.getElementById('instructor-final-voting-status').textContent =
+      `${voted} / ${data.students.length} students voted`;
+  } catch(e) { console.error('Failed to update instructor final view:', e); }
+}
+
+async function submitFinalVote() {
+  if (!selectedFinalStory) return;
+  await api('POST', `/classroom/sessions/${sessionId}/vote/final`,
+    { voter_username: username, story_id: selectedFinalStory });
+  document.getElementById('screen-final').innerHTML =
+    '<div class="card" style="text-align:center"><h3>Final vote cast ✓</h3><p>Waiting for the reveal…</p></div>';
+}
+
+// ── Reveal ─────────────────────────────────────────────────────────────────────
+async function showReveal(ev) {
+  badge('REVEAL');
+
+  // Detection mode reveal
+  if (ev.mode === 'intrusion_detection' || sessionMode === 'intrusion_detection') {
+    show('reveal-detection');
+
+    const board = ev.leaderboard || [];
+    const winner = board.find(d => d.id === ev.winner_id);
+
+    // Update winner banner
+    if (winner) {
+      document.getElementById('detection-winner-name').textContent = winner.author || 'Unknown';
+      document.getElementById('detection-winner-score').textContent = `Score: ${winner.ai_composite || '—'}`;
+    }
+
+    // Show actual attack description
+    document.getElementById('actual-attack-description').textContent = ev.attack_description || 'No attack description available';
+
+    // Populate detection leaderboard
+    const tbody = document.getElementById('detection-leaderboard-tbody');
+    tbody.innerHTML = board.map(d => `
+      <tr class="clickable-row ${d.id===ev.winner_id?'winner':''}" onclick="showDetectionModal('${d.id}')">
+        <td>${d.author}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.detection_preview || ''}">${d.detection_preview || '—'}</td>
+        <td>${d.accuracy != null ? d.accuracy.toFixed(1) : '—'}</td>
+        <td>${d.specificity != null ? d.specificity.toFixed(1) : '—'}</td>
+        <td>${d.clarity != null ? d.clarity.toFixed(1) : '—'}</td>
+        <td><strong>${d.ai_composite != null ? d.ai_composite.toFixed(1) : '—'}</strong></td>
+      </tr>`).join('');
+
+    // Populate polish model dropdowns for detection mode
+    try {
+      const data = await api('GET', `/classroom/sessions/${sessionId}/debug`);
+      const config = data.llm_config || { provider: 'groq', endpoint: 'https://api.groq.com/openai/v1', model_name: 'llama-3.3-70b-versatile', api_key: '' };
+      sessionApiKey = config.api_key || sessionStorage.getItem('groq_api_key') || '';
+      populateDetectionPolishModels(config);
+    } catch(e) {
+      console.error('Failed to fetch session config:', e);
+      sessionApiKey = sessionStorage.getItem('groq_api_key') || '';
+      populateDetectionPolishModels(null);
+    }
+
+    return;
+  }
+
+  // Storytelling mode reveal
+  if (role === 'instructor') {
+    show('instructor-reveal');
+    document.getElementById('instructor-reveal-session-id').textContent = sessionId;
+    const board = ev.leaderboard || [];
+    const winner = board.find(s => s.id === ev.winner_id);
+    if (winner) {
+      document.getElementById('instructor-winner-name').textContent = winner.hero || '?';
+      document.getElementById('instructor-winner-author').textContent = winner.author || 'Unknown';
+    }
+
+    const tbody = document.getElementById('instructor-leaderboard-body');
+    tbody.innerHTML = board.map((s, i) => `
+      <tr class="clickable-row ${s.id===ev.winner_id?'winner':''}" onclick="showStoryModal('${s.id}')">
+        <td>${i+1}</td>
+        <td>${s.hero}</td><td>${s.author}</td>
+        <td>${s.peer_votes}</td><td>${s.final_votes}</td>
+        <td>${s.ai_composite != null ? s.ai_composite.toFixed(1) : '—'}</td>
+      </tr>`).join('');
+
+    // Populate polish model dropdowns with session's current config as default
+    try {
+      const data = await api('GET', `/classroom/sessions/${sessionId}/debug`);
+      const config = data.llm_config || { provider: 'groq', endpoint: 'https://api.groq.com/openai/v1', model_name: 'llama-3.3-70b-versatile', api_key: '' };
+      // Use API key from config or fall back to sessionStorage
+      sessionApiKey = config.api_key || sessionStorage.getItem('groq_api_key') || '';
+      populatePolishModels(config);
+    } catch(e) {
+      console.error('Failed to fetch session config:', e);
+      // Fall back to sessionStorage if available
+      sessionApiKey = sessionStorage.getItem('groq_api_key') || '';
+      populatePolishModels(null);
+    }
+    return;
+  }
+
+  // Student view
+  show('reveal');
+  const board = ev.leaderboard || [];
+  const winner = board.find(s => s.id === ev.winner_id);
+  if (winner) {
+    document.getElementById('winner-name').textContent = winner.hero || '?';
+    document.getElementById('winner-author').textContent = 'by ' + winner.author;
+  }
+  const match = ev.winner_id === ev.ai_winner_id;
+  document.getElementById('ai-match-note').innerHTML = match
+    ? '<strong style="color:var(--red)">🤝 Human vote and AI pick agreed!</strong>'
+    : `<strong>Humans chose differently from the AI.</strong><br>
+       AI top pick: <em>${(board.find(s=>s.id===ev.ai_winner_id)||{}).hero||'unknown'}</em> — great discussion starter!`;
+
+  const tbody = document.getElementById('leaderboard-body');
+  tbody.innerHTML = board.map(s => `
+    <tr class="clickable-row ${s.id===ev.winner_id?'winner':s.id===ev.ai_winner_id?'ai-pick':''}" onclick="showStoryModal('${s.id}')">
+      <td>${s.hero}</td><td>${s.author}</td>
+      <td>${s.peer_votes}</td><td>${s.final_votes}</td>
+      <td>${s.ai_composite != null ? s.ai_composite.toFixed(1) : '—'}</td>
+    </tr>`).join('');
+}
+
+// ── Shared story pair renderer ────────────────────────────────────────────────
+async function renderStoryPair(containerId, storyIds, onSelect) {
+  // Fetch story details (instructor-mode would have them; students need a peek endpoint)
+  // For MVP, stories are broadcast via WS on phase.review — here we use placeholders
+  const container = document.getElementById(containerId);
+  container.innerHTML = storyIds.map((id, i) => `
+    <div class="story-card" id="story-card-${id}" onclick="selectCard('${id}','${containerId}',arguments[0],${JSON.stringify(storyIds)})">
+      <h3>Story ${String.fromCharCode(65+i)}</h3>
+      <p id="story-text-${id}"><em>Loading…</em></p>
+    </div>`).join('');
+  // Attach callback
+  window['_onSelect_'+containerId] = onSelect;
+}
+
+function selectCard(storyId, containerId, event, allIds) {
+  allIds.forEach(id => document.getElementById('story-card-'+id)?.classList.remove('selected'));
+  document.getElementById('story-card-'+storyId)?.classList.add('selected');
+  const fn = window['_onSelect_'+containerId];
+  if (fn) fn(storyId);
+}
+
+// ── URL Parameter Initialization ──────────────────────────────────────────────
+async function initFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const sid = params.get('session');
+  if (!sid) return;  // No session in URL, stay on lobby
+
+  try {
+    // Fetch session to check if it exists
+    const session = await api('GET', `/classroom/sessions/${sid}`);
+
+    // Default to instructor view (could add &role=student for student view)
+    sessionId = sid;
+    role = 'instructor';
+    document.getElementById('display-session-id').textContent = sessionId;
+    connectWS(sessionId);
+
+    // Show appropriate screen based on phase
+    if (session.phase === 'setup') {
+      show('setup');
+      badge('SETUP');
+      if (session.student_count) {
+        document.getElementById('student-count-chip').textContent = session.student_count + ' students connected';
+      }
+    } else {
+      // For other phases, show setup screen and let WebSocket update it
+      show('setup');
+      badge(session.phase.toUpperCase());
+      document.getElementById('student-count-chip').textContent = session.student_count + ' students connected';
+    }
+    // Load saved API key into field
+    loadSavedApiKey('groq-api-key');
+    // Start idle timer for instructor
+    startIdleTimer();
+  } catch (e) {
+    console.error('Could not load session from URL:', e);
+    alert('Session ' + sid + ' not found');
+  }
+}
+
+// ── Simulation ────────────────────────────────────────────────────────────────
+async function runSimulation() {
+  const count = parseInt(document.getElementById('simulate-count').value);
+  const delay = parseFloat(document.getElementById('simulate-delay').value);
+
+  if (!count || count < 2 || count > 40) {
+    alert('Please enter a number between 2 and 40');
+    return;
+  }
+
+  try {
+    // Save rubric
+    const rubric = {
+      criterion1: document.getElementById('rub1').value,
+      criterion2: document.getElementById('rub2').value,
+      criterion3: document.getElementById('rub3').value
+    };
+
+    // Mode-specific setup
+    if (sessionMode === 'intrusion_detection') {
+      const detectionTemplate = document.getElementById('detection-template').value;
+      await api('PUT', `/classroom/sessions/${sessionId}/arc`, { step1: detectionTemplate, step2: '', step3: '' });
+    } else {
+      const arc = {
+        step1: document.getElementById('arc1').value,
+        step2: document.getElementById('arc2').value,
+        step3: document.getElementById('arc3').value
+      };
+      await api('PUT', `/classroom/sessions/${sessionId}/arc`, arc);
+    }
+
+    // Save generation model config
+    const provider = document.getElementById('model-provider').value;
+    const modelName = document.getElementById('model-name').value;
+    const apiKey = document.getElementById('groq-api-key').value;
+    let endpoint;
+    if (provider === 'groq') {
+      endpoint = 'https://api.groq.com/openai/v1';
+    } else if (provider === 'kserve') {
+      // KServe endpoint is model-specific
+      endpoint = `http://${modelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+    } else if (provider === 'ollama') {
+      endpoint = 'http://localhost:11434/v1';
+    }
+    const modelConfig = {
+      provider: provider,
+      endpoint: endpoint,
+      model_name: modelName,
+      api_key: apiKey
+    };
+
+    // Save grading model config
+    const gradingProvider = document.getElementById('grading-provider').value;
+    const gradingModelName = document.getElementById('grading-model-name').value;
+    const gradingApiKey = document.getElementById('groq-api-key').value;
+    let gradingEndpoint;
+    if (gradingProvider === 'groq') {
+      gradingEndpoint = 'https://api.groq.com/openai/v1';
+    } else if (gradingProvider === 'kserve') {
+      gradingEndpoint = `http://${gradingModelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+    } else if (gradingProvider === 'ollama') {
+      gradingEndpoint = 'http://localhost:11434/v1';
+    }
+    const gradingConfig = {
+      provider: gradingProvider,
+      endpoint: gradingEndpoint,
+      model_name: gradingModelName,
+      api_key: gradingApiKey
+    };
+
+    await api('PUT', `/classroom/sessions/${sessionId}/rubric`, rubric);
+    await api('PUT', `/classroom/sessions/${sessionId}/model`, modelConfig);
+    await api('PUT', `/classroom/sessions/${sessionId}/grading-model`, gradingConfig);
+
+    // Trigger simulation with delay
+    await api('POST', `/classroom/sessions/${sessionId}/simulate`, {
+      student_count: count,
+      story_delay: delay
+    });
+  } catch(e) {
+    alert('Simulation failed: ' + e.message);
+  }
+}
+
+// ── AI Polish ─────────────────────────────────────────────────────────────────
+let sessionApiKey = '';  // Store the session's Groq API key
+
+function parseModelConfig(value) {
+  const [provider, endpoint, model_name] = value.split('|');
+  // For Groq, use sessionApiKey or fall back to sessionStorage
+  const api_key = provider === 'groq' ? (sessionApiKey || sessionStorage.getItem('groq_api_key') || '') : '';
+  return { provider, endpoint, model_name, api_key };
+}
+
+async function runPolish() {
+  const rounds = parseInt(document.getElementById('polish-rounds').value);
+  console.log('Starting polish with rounds:', rounds);
+
+  if (!rounds || rounds < 1 || rounds > 10) {
+    alert('Please enter a number of rounds between 1 and 10');
+    return;
+  }
+
+  const model1Value = document.getElementById('polish-model-1').value;
+  const model2Value = document.getElementById('polish-model-2').value;
+
+  const model1 = parseModelConfig(model1Value);
+  const model2 = parseModelConfig(model2Value);
+
+  // Update display names
+  const model1Text = document.getElementById('polish-model-1').selectedOptions[0].text;
+  const model2Text = document.getElementById('polish-model-2').selectedOptions[0].text;
+  document.getElementById('polish-model-1-name').textContent = model1Text;
+  document.getElementById('polish-model-2-name').textContent = model2Text;
+
+  try {
+    // Hide controls, show progress
+    console.log('Showing progress UI');
+    document.getElementById('polish-controls').style.display = 'none';
+    document.getElementById('polish-progress').style.display = 'block';
+    document.getElementById('polish-results').style.display = 'none';
+    document.getElementById('polish-total-rounds').textContent = rounds;
+    document.getElementById('polish-current-round').textContent = '0';
+    document.getElementById('polish-total-1').textContent = rounds;
+    document.getElementById('polish-total-2').textContent = rounds;
+    document.getElementById('polish-round-1').textContent = '0';
+    document.getElementById('polish-round-2').textContent = '0';
+    document.getElementById('polish-score-1').textContent = '—';
+    document.getElementById('polish-score-2').textContent = '—';
+
+    console.log('Calling polish-compare API');
+    await api('POST', `/classroom/sessions/${sessionId}/polish-compare`, {
+      rounds,
+      model1,
+      model2,
+    });
+    console.log('Polish API call successful');
+  } catch(e) {
+    console.error('Polish API failed:', e);
+    alert('Polish failed: ' + e.message);
+    document.getElementById('polish-controls').style.display = 'flex';
+    document.getElementById('polish-progress').style.display = 'none';
+  }
+}
+
+// ── Detection Polish ──────────────────────────────────────────────────────────
+async function runDetectionPolish() {
+  const rounds = parseInt(document.getElementById('polish-detection-rounds').value);
+  console.log('Starting detection polish with rounds:', rounds);
+
+  if (!rounds || rounds < 1 || rounds > 10) {
+    alert('Please enter a number of rounds between 1 and 10');
+    return;
+  }
+
+  const model1Value = document.getElementById('polish-detection-model-1').value;
+  const model2Value = document.getElementById('polish-detection-model-2').value;
+
+  const model1 = parseModelConfig(model1Value);
+  const model2 = parseModelConfig(model2Value);
+
+  // Update display names
+  const model1Text = document.getElementById('polish-detection-model-1').selectedOptions[0].text;
+  const model2Text = document.getElementById('polish-detection-model-2').selectedOptions[0].text;
+  document.getElementById('polish-detection-model-1-name').textContent = model1Text;
+  document.getElementById('polish-detection-model-2-name').textContent = model2Text;
+
+  try {
+    // Hide controls, show progress
+    console.log('Showing progress UI for detection polish');
+    document.getElementById('polish-detection-controls').style.display = 'none';
+    document.getElementById('polish-detection-progress').style.display = 'block';
+    document.getElementById('polish-detection-results').style.display = 'none';
+    document.getElementById('polish-detection-total-rounds').textContent = rounds;
+    document.getElementById('polish-detection-current-round').textContent = '0';
+    document.getElementById('polish-detection-total-1').textContent = rounds;
+    document.getElementById('polish-detection-total-2').textContent = rounds;
+    document.getElementById('polish-detection-round-1').textContent = '0';
+    document.getElementById('polish-detection-round-2').textContent = '0';
+    document.getElementById('polish-detection-score-1').textContent = '—';
+    document.getElementById('polish-detection-score-2').textContent = '—';
+
+    console.log('Calling polish-detection-compare API');
+    await api('POST', `/classroom/sessions/${sessionId}/polish-detection-compare`, {
+      rounds,
+      model1,
+      model2,
+    });
+    console.log('Detection polish API call successful');
+  } catch(e) {
+    console.error('Detection polish API failed:', e);
+    alert('Polish failed: ' + e.message);
+    document.getElementById('polish-detection-controls').style.display = 'flex';
+    document.getElementById('polish-detection-progress').style.display = 'none';
+  }
+}
+
+// ── Story Modal ───────────────────────────────────────────────────────────────
+async function showStoryModal(storyId) {
+  try {
+    const data = await api('GET', `/classroom/sessions/${sessionId}/debug`);
+    const story = data.stories[storyId];
+    if (!story) {
+      alert('Story not found');
+      return;
+    }
+
+    document.getElementById('modal-hero-name').textContent = story.hero;
+    document.getElementById('modal-author').textContent = story.author;
+    document.getElementById('modal-backstory').textContent = story.hero_backstory || 'Not provided';
+    document.getElementById('modal-challenge').textContent = story.challenge || 'Not provided';
+    document.getElementById('modal-resolution').textContent = story.resolution || 'Not provided';
+
+    // Show AI scores if available
+    const scoresDiv = document.getElementById('modal-scores');
+    const score = story.ai_score_reveal || story.ai_score_review;
+    if (score) {
+      const comp = ((score.criterion1 + score.criterion2 + score.criterion3) / 3).toFixed(1);
+      scoresDiv.innerHTML = `
+        <div class="label">AI Scores</div>
+        <p><strong>Criterion 1:</strong> ${score.criterion1}/10 &nbsp;
+           <strong>Criterion 2:</strong> ${score.criterion2}/10 &nbsp;
+           <strong>Criterion 3:</strong> ${score.criterion3}/10</p>
+        <p><strong>Composite:</strong> ${comp}/10</p>
+      `;
+    } else {
+      scoresDiv.innerHTML = '';
+    }
+
+    document.getElementById('story-modal').classList.add('active');
+  } catch(e) {
+    console.error('Failed to load story:', e);
+    alert('Could not load story details');
+  }
+}
+
+function closeStoryModal() {
+  document.getElementById('story-modal').classList.remove('active');
+}
+
+// ── Detection Modal ───────────────────────────────────────────────────────────
+async function showDetectionModal(detectionId) {
+  try {
+    const data = await api('GET', `/classroom/sessions/${sessionId}/debug`);
+    const detection = data.detection_prompts[detectionId];
+    if (!detection) {
+      alert('Detection not found');
+      return;
+    }
+
+    document.getElementById('modal-detection-author').textContent = detection.author;
+    document.getElementById('modal-detection-text').textContent = detection.detection_text || 'No detection script provided';
+
+    // Show AI scores if available
+    const scoresDiv = document.getElementById('modal-detection-scores');
+    const score = detection.ai_score_reveal || detection.ai_score_review;
+    if (score) {
+      const comp = ((score.accuracy + score.specificity + score.clarity) / 3).toFixed(1);
+      scoresDiv.innerHTML = `
+        <div class="label">AI Scores</div>
+        <p><strong>Accuracy:</strong> ${score.accuracy}/10 &nbsp;
+           <strong>Specificity:</strong> ${score.specificity}/10 &nbsp;
+           <strong>Clarity:</strong> ${score.clarity}/10</p>
+        <p><strong>Composite:</strong> ${comp}/10</p>
+      `;
+    } else {
+      scoresDiv.innerHTML = '';
+    }
+
+    document.getElementById('detection-modal').classList.add('active');
+  } catch(e) {
+    console.error('Failed to load detection:', e);
+    alert('Could not load detection details');
+  }
+}
+
+function closeDetectionModal() {
+  document.getElementById('detection-modal').classList.remove('active');
+}
+
+// ── Traffic Modal ─────────────────────────────────────────────────────────────
+async function showTrafficModal() {
+  try {
+    const res = await api('GET', `/classroom/sessions/${sessionId}/traffic`);
+    const tbody = document.getElementById('modal-traffic-tbody');
+    tbody.innerHTML = '';
+
+    res.entries.forEach(entry => {
+      const row = document.createElement('tr');
+      const timestamp = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      row.innerHTML = `
+        <td style="padding:6px;font-size:0.85rem;border-bottom:1px solid #ddd">${timestamp}</td>
+        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.source_ip}</td>
+        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.source_mac}</td>
+        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.dest_ip}</td>
+        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.dest_port}</td>
+        <td style="padding:6px;border-bottom:1px solid #ddd">${entry.protocol}</td>
+        <td style="padding:6px;font-size:0.85rem;border-bottom:1px solid #ddd">${entry.event_type}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    document.getElementById('traffic-modal').classList.add('active');
+  } catch(e) {
+    console.error('Error loading traffic:', e);
+    alert('Could not load traffic data');
+  }
+}
+
+function closeTrafficModal() {
+  document.getElementById('traffic-modal').classList.remove('active');
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeStoryModal();
+    closeDetectionModal();
+    closeTrafficModal();
+  }
+});
+
+// Run on page load
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();  // Load config and initialize provider/model dropdowns
+  initFromURL();
+});
+</script>
+</body>
+</html>

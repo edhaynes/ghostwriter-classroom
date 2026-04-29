@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  redis:
+    # Red Hat certified Redis image (also works: redis:7-alpine)
+    image: registry.redhat.io/rhel9/redis-7:latest
+    container_name: ghostwriter-classroom-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/var/lib/redis/data
+    environment:
+      - REDIS_PASSWORD=  # Empty for local dev, set for production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis-data:
