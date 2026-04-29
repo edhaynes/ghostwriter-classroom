@@ -1,16 +1,30 @@
 # Ghostwriter Classroom
 
-AI-powered collaborative storytelling classroom demo featuring real-time grading, peer voting, and human vs. AI comparison.
+AI-powered collaborative classroom demo featuring real-time grading and human vs. AI comparison. Supports two modes:
+- **Storytelling**: Students craft stories with peer voting
+- **Intrusion Detection**: Students write network detection logic for cybersecurity training
 
-## Features
+## Session Modes
 
+### Storytelling Mode
 - 📖 **Story Arc Setup** - Instructor defines 3-step story structure
-- ⚖️ **Custom Rubric** - Define grading criteria
 - ⏱️ **Timed Writing** - 5-minute story creation sprint (configurable)
-- 🤖 **AI Grading** - Automatic story evaluation via Groq LLM
 - 👥 **Peer Voting** - Students vote on favorites
-- 🏆 **Results Reveal** - Winner announcement with full leaderboard
-- 🎭 **Demo Mode** - Auto-simulate entire classroom (2-10 students)
+- 🏆 **Winner Selection** - Combined AI + peer score determines finalists
+
+### Intrusion Detection Mode
+- 🌐 **Network Traffic Generation** - Synthetic attack scenarios (port scans, IP spoofing)
+- 🔍 **Detection Logic** - Students write scripts to identify intrusions
+- 🤖 **AI Grading Only** - No peer voting; automatic evaluation
+- 📊 **Traffic Viewer** - Inspect attack data during reveal
+
+📘 **See [INTRUSION_DETECTION_DEMO.md](INTRUSION_DETECTION_DEMO.md) for instructor guide**
+
+## Common Features
+
+- ⚖️ **Custom Rubric** - Define grading criteria
+- 🤖 **AI Grading** - Automatic evaluation via Groq/Ollama/KServe
+- 🎭 **Demo Mode** - Auto-simulate entire classroom (2-40 students)
 - 💾 **Redis Persistence** - Sessions survive server restarts
 - ⏰ **Idle Shutdown** - Auto-shutdown after 1 hour to save resources
 - 🎩 **Red Hat Branding** - Logo and styling
@@ -100,11 +114,18 @@ ghostwriter_classroom/
 
 ## Workflow
 
-1. **SETUP**: Instructor configures arc + rubric
+### Storytelling Mode
+1. **SETUP**: Instructor configures story arc + rubric
 2. **WRITING**: Students write stories (5 min timer, configurable)
 3. **REVIEW**: AI grading + peer voting
 4. **FINAL_VOTE**: Vote on top 2 finalists
 5. **REVEAL**: Winner announced with scores
+
+### Intrusion Detection Mode
+1. **SETUP**: Instructor generates network traffic + configures rubric
+2. **WRITING**: Students write detection logic (5 min timer, configurable)
+3. **REVIEW**: AI grading only (no peer voting)
+4. **REVEAL**: Winner announced with scores, view traffic data
 
 All phases auto-advance when complete!
 
