@@ -98,28 +98,34 @@ async def get_config():
 
 
 @router.get("/models/ollama")
-async def get_ollama_models():
-    """Return list of locally available Ollama models, or popular defaults."""
+async def get_ollama_models(location: str = "local"):
+    """Return Ollama models for local or cloud usage."""
     import subprocess
 
-    # Popular Ollama models (fallback for cloud deployments)
-    # Includes both local and :cloud variants
-    popular_models = [
-        # Small local models
-        {"name": "llama3.2:3b", "label": "Llama 3.2 3B (local)"},
-        {"name": "llama3.1:8b", "label": "Llama 3.1 8B (local)"},
-        {"name": "qwen2.5:7b", "label": "Qwen 2.5 7B (local)"},
-        {"name": "mistral:7b", "label": "Mistral 7B (local)"},
-        {"name": "gemma2:9b", "label": "Gemma 2 9B (local)"},
+    if location == "cloud":
+        # Curated subset of models from ollama.com/v1/models (April 2026)
+        cloud_models = [
+            {"name": "gemma4:31b", "label": "Gemma 4 31B (ollama-cloud)"},
+            {"name": "gemma3:27b", "label": "Gemma 3 27B (ollama-cloud)"},
+            {"name": "gemma3:12b", "label": "Gemma 3 12B (ollama-cloud)"},
+            {"name": "qwen3.5:397b", "label": "Qwen 3.5 397B (ollama-cloud)"},
+            {"name": "qwen3-next:80b", "label": "Qwen 3 Next 80B (ollama-cloud)"},
+            {"name": "deepseek-v4-pro", "label": "DeepSeek V4 Pro (ollama-cloud)"},
+            {"name": "deepseek-v4-flash", "label": "DeepSeek V4 Flash (ollama-cloud)"},
+            {"name": "deepseek-v3.2", "label": "DeepSeek V3.2 (ollama-cloud)"},
+            {"name": "glm-5", "label": "GLM 5 (ollama-cloud)"},
+            {"name": "nemotron-3-super", "label": "Nemotron 3 Super (ollama-cloud)"},
+            {"name": "devstral-2:123b", "label": "Devstral 2 123B (ollama-cloud)"},
+            {"name": "mistral-large-3:675b", "label": "Mistral Large 3 675B (ollama-cloud)"},
+        ]
+        return {"models": cloud_models}
 
-        # Large cloud models (require :cloud suffix)
-        {"name": "llama3.1:70b-cloud", "label": "Llama 3.1 70B (cloud)"},
-        {"name": "llama3.3:70b-cloud", "label": "Llama 3.3 70B (cloud)"},
-        {"name": "qwen2.5:14b-cloud", "label": "Qwen 2.5 14B (cloud)"},
-        {"name": "qwen2.5:32b-cloud", "label": "Qwen 2.5 32B (cloud)"},
-        {"name": "mixtral:8x7b-cloud", "label": "Mixtral 8x7B (cloud)"},
-        {"name": "gemma2:27b-cloud", "label": "Gemma 2 27B (cloud)"},
-        {"name": "deepseek-v4-pro:cloud", "label": "DeepSeek V4 Pro (cloud)"},
+    local_fallback = [
+        {"name": "llama3.2:3b", "label": "Llama 3.2 3B (ollama-local)"},
+        {"name": "llama3.1:8b", "label": "Llama 3.1 8B (ollama-local)"},
+        {"name": "qwen2.5:7b", "label": "Qwen 2.5 7B (ollama-local)"},
+        {"name": "mistral:7b", "label": "Mistral 7B (ollama-local)"},
+        {"name": "gemma2:9b", "label": "Gemma 2 9B (ollama-local)"},
     ]
 
     try:
@@ -130,31 +136,28 @@ async def get_ollama_models():
             timeout=5,
         )
         if result.returncode == 0:
-            # Parse output (skip header line)
             lines = result.stdout.strip().split('\n')[1:]
             models = []
             for line in lines:
                 if line.strip():
-                    # First column is the model name
                     parts = line.split()
                     if parts:
                         model_name = parts[0]
                         models.append({
                             "name": model_name,
-                            "label": f"{model_name} (Ollama)"
+                            "label": f"{model_name} (ollama-local)",
                         })
 
             if models:
                 logger.info(f"Found {len(models)} local Ollama models")
                 return {"models": models}
 
-        # Fallthrough to popular models
-        logger.info("Using popular Ollama models (local ollama not available)")
-        return {"models": popular_models}
+        logger.info("No local Ollama models found, using fallback list")
+        return {"models": local_fallback}
 
     except (FileNotFoundError, Exception) as e:
-        logger.info(f"Ollama not available locally, using popular models: {e}")
-        return {"models": popular_models}
+        logger.info(f"Ollama not available locally, using fallback list: {e}")
+        return {"models": local_fallback}
 
 
 @router.get("/models/groq")
@@ -166,10 +169,10 @@ async def get_groq_models():
     """
     return {
         "models": [
-            {"name": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B Versatile (280 T/s)"},
-            {"name": "llama-3.1-8b-instant", "label": "Llama 3.1 8B Instant (560 T/s)"},
-            {"name": "openai/gpt-oss-120b", "label": "GPT OSS 120B (500 T/s)"},
-            {"name": "openai/gpt-oss-20b", "label": "GPT OSS 20B"},
+            {"name": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B Versatile 280 T/s (groq)"},
+            {"name": "llama-3.1-8b-instant", "label": "Llama 3.1 8B Instant 560 T/s (groq)"},
+            {"name": "openai/gpt-oss-120b", "label": "GPT OSS 120B 500 T/s (groq)"},
+            {"name": "openai/gpt-oss-20b", "label": "GPT OSS 20B (groq)"},
         ]
     }
 

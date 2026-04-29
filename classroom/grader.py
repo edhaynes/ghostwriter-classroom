@@ -68,9 +68,10 @@ async def grade_story(story: Story, rubric: Rubric, config: ModelConfig) -> tupl
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=80,
+            max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = resp.choices[0].message.content or ""
+        raw = raw.strip()
         logger.debug(f"Grading response for {story.id}: {raw[:100]}")
         # Tolerate minor formatting: extract first JSON object
         match = re.search(r"\{[^}]+\}", raw)
@@ -175,10 +176,11 @@ async def surprise_me(arc_step1: str, arc_step2: str, arc_step3: str, config: Mo
                 {"role": "system", "content": SURPRISE_SYSTEM},
                 {"role": "user", "content": prompt},
             ],
-            temperature=1.0,  # Maximum creativity
-            max_tokens=200,
+            temperature=1.0,
+            max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = resp.choices[0].message.content or ""
+        raw = raw.strip()
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         if not match:
             raise ValueError("No JSON in surprise response")
@@ -240,9 +242,10 @@ Rewrite this story to improve these areas while maintaining the core narrative."
                 {"role": "user", "content": prompt},
             ],
             temperature=0.7,
-            max_tokens=250,
+            max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = resp.choices[0].message.content or ""
+        raw = raw.strip()
         logger.debug(f"Polish response: {raw[:200]}")
 
         # Strip markdown code blocks if present
@@ -315,10 +318,11 @@ Is this appropriate for a classroom and free of copyrighted content?"""
                 {"role": "system", "content": MODERATION_SYSTEM},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.0,  # Deterministic for moderation
-            max_tokens=100,
+            temperature=0.0,
+            max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = resp.choices[0].message.content or ""
+        raw = raw.strip()
         logger.debug(f"Moderation response: {raw}")
 
         # Extract JSON
@@ -450,10 +454,11 @@ Grade on:
                 )},
                 {"role": "user", "content": grading_prompt},
             ],
-            temperature=0.2,  # Consistent grading
-            max_tokens=100,
+            temperature=0.2,
+            max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = resp.choices[0].message.content or ""
+        raw = raw.strip()
         logger.debug(f"Detection grading response: {raw[:100]}")
 
         # Extract JSON
@@ -580,10 +585,11 @@ Write your mediocre-but-generic detection script (not a prose description)."""
                 {"role": "system", "content": SURPRISE_DETECTION_SYSTEM},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.8,  # Some variation but not max creativity
-            max_tokens=300,
+            temperature=0.8,
+            max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = resp.choices[0].message.content or ""
+        raw = raw.strip()
         match = re.search(r"\{.*?\}", raw, re.DOTALL)
         if not match:
             raise ValueError("No JSON in surprise detection response")
@@ -656,10 +662,11 @@ Rewrite this detection to be more accurate, specific, and clear based on the tra
                 {"role": "system", "content": POLISH_DETECTION_SYSTEM},
                 {"role": "user", "content": polish_prompt},
             ],
-            temperature=0.7,  # Balanced - not too creative, not too rigid
-            max_tokens=350,
+            temperature=0.7,
+            max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = resp.choices[0].message.content or ""
+        raw = raw.strip()
         match = re.search(r"\{.*?\}", raw, re.DOTALL)
         if not match:
             raise ValueError("No JSON in polish response")

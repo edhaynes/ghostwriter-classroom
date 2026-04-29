@@ -72,7 +72,7 @@
 
 <header>
   <span style="font-size:1.4rem">📖</span>
-  <h1>GHOSTWRITER <span style="opacity:.6;font-size:.9rem">Classroom</span> <span style="opacity:.4;font-size:.7rem;font-weight:normal">v0.5.9</span></h1>
+  <h1>GHOSTWRITER <span style="opacity:.6;font-size:.9rem">Classroom</span> <span style="opacity:.4;font-size:.7rem;font-weight:normal">v0.6.0</span></h1>
   <span class="badge" id="phase-badge">LOBBY</span>
   <div id="idle-timer" style="display:none;margin-left:20px;margin-right:60px;text-align:left">
     <div style="font-size:0.85rem;color:#666;margin-bottom:4px">Auto-shutdown in: <span id="idle-countdown" style="font-weight:600">--</span></div>
@@ -158,19 +158,19 @@
       <div style="margin-bottom:16px">
         <label style="display:inline-flex;align-items:center;margin-right:20px;font-weight:normal;cursor:pointer">
           <input type="radio" name="ollama-location" value="local" checked onchange="toggleOllamaLocation()" style="width:auto;margin-right:6px">
-          <span>Local Ollama (supports :cloud models)</span>
+          <span>Local (localhost:11434)</span>
         </label>
         <label style="display:inline-flex;align-items:center;font-weight:normal;cursor:pointer">
           <input type="radio" name="ollama-location" value="cloud" onchange="toggleOllamaLocation()" style="width:auto;margin-right:6px">
-          <span>Remote/Self-Hosted Server</span>
+          <span>Cloud (ollama.com)</span>
         </label>
       </div>
 
       <div id="ollama-cloud-fields" style="display:none">
-        <label>Remote Ollama Endpoint</label>
-        <input id="ollama-endpoint" type="text" placeholder="http://your-server:11434/v1" style="margin-bottom:12px;width:100%" onchange="saveApiKey('ollama-endpoint')"/>
-        <label>API Key <span style="font-size:0.85rem;color:var(--gray)">(if required by server)</span></label>
-        <input id="ollama-api-key" type="password" placeholder="Optional API key" style="margin-bottom:0;width:100%" onchange="saveApiKey('ollama-api-key')"/>
+        <label>Ollama Cloud Endpoint</label>
+        <input id="ollama-endpoint" type="text" value="https://ollama.com/v1" style="margin-bottom:12px;width:100%" onchange="saveApiKey('ollama-endpoint')"/>
+        <label>Ollama API Key</label>
+        <input id="ollama-api-key" type="password" placeholder="ollama_..." style="margin-bottom:0;width:100%" onchange="saveApiKey('ollama-api-key')"/>
       </div>
     </div>
 
@@ -817,7 +817,7 @@ let selectedReviewWinner = null, selectedFinalStory = null;
 let reviewAssignment = [];  // [storyA_id, storyB_id]
 let finalFinalists = [];
 let kserveAvailable = false;  // Whether running in OpenShift
-let availableModels = { groq: [], ollama: [], kserve: [] };  // Dynamically loaded models
+let availableModels = { groq: [], ollama_local: [], ollama_cloud: [], kserve: [] };
 
 // Traffic table sorting state
 let trafficData = [];  // Store traffic entries for sorting
@@ -1529,27 +1529,25 @@ async function createInstructorSession() {
 // ── Setup ─────────────────────────────────────────────────────────────────────
 // ── Model Settings ────────────────────────────────────────────────────────────
 function getModelOptions(provider) {
-  // Return dynamically loaded models
-  const providerModels = availableModels[provider] || [];
+  let providerModels;
+  if (provider === 'ollama') {
+    const isCloud = sessionStorage.getItem('ollama_location') === 'cloud';
+    providerModels = isCloud ? availableModels.ollama_cloud : availableModels.ollama_local;
+  } else {
+    providerModels = availableModels[provider] || [];
+  }
 
-  // Map to the format needed for dropdowns (provider|endpoint|model_name)
   return providerModels.map(m => {
     let endpoint;
     if (provider === 'groq') {
       endpoint = 'https://api.groq.com/openai/v1';
     } else if (provider === 'kserve') {
-      // KServe endpoint is model-specific
       endpoint = `http://${m.name}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
     } else if (provider === 'ollama') {
-      // Use saved location preference (default to local)
-      const savedLocation = sessionStorage.getItem('ollama_location');
-      const isRemote = savedLocation === 'cloud';
-
-      if (isRemote) {
-        // Remote server
-        endpoint = sessionStorage.getItem('ollama_endpoint') || '';
+      const isCloud = sessionStorage.getItem('ollama_location') === 'cloud';
+      if (isCloud) {
+        endpoint = sessionStorage.getItem('ollama_endpoint') || 'https://ollama.com/v1';
       } else {
-        // Local (default) - supports both local and :cloud models
         endpoint = 'http://localhost:11434/v1';
       }
     }
@@ -1568,14 +1566,16 @@ async function loadConfig() {
     console.log('Config loaded. KServe available:', kserveAvailable);
 
     // Load available models from each provider
-    const [groqData, ollamaData, kserveData] = await Promise.all([
+    const [groqData, ollamaLocalData, ollamaCloudData, kserveData] = await Promise.all([
       api('GET', '/classroom/models/groq').catch(() => ({models: []})),
-      api('GET', '/classroom/models/ollama').catch(() => ({models: []})),
+      api('GET', '/classroom/models/ollama?location=local').catch(() => ({models: []})),
+      api('GET', '/classroom/models/ollama?location=cloud').catch(() => ({models: []})),
       kserveAvailable ? api('GET', '/classroom/models/kserve').catch(() => ({models: []})) : Promise.resolve({models: []}),
     ]);
 
     availableModels.groq = groqData.models || [];
-    availableModels.ollama = ollamaData.models || [];
+    availableModels.ollama_local = ollamaLocalData.models || [];
+    availableModels.ollama_cloud = ollamaCloudData.models || [];
     availableModels.kserve = kserveData.models || [];
 
     console.log('Available models:', availableModels);
@@ -1590,7 +1590,7 @@ async function loadConfig() {
       if (kserveAvailable && availableModels.kserve.length > 0) {
         options += '<option value="kserve">OpenShift KServe (Local)</option>';
       }
-      if (availableModels.ollama.length > 0) {
+      if (availableModels.ollama_local.length > 0 || availableModels.ollama_cloud.length > 0) {
         options += '<option value="ollama">Ollama (Mac/Windows)</option>';
       }
 
@@ -1601,7 +1601,7 @@ async function loadConfig() {
       let defaultProvider = 'groq';
       if (kserveAvailable && availableModels.kserve.length > 0) {
         defaultProvider = 'kserve';
-      } else if (availableModels.ollama.length > 0) {
+      } else if (availableModels.ollama_local.length > 0 || availableModels.ollama_cloud.length > 0) {
         defaultProvider = 'ollama';
       }
 
@@ -1650,6 +1650,10 @@ function toggleOllamaLocation() {
 
   // Save preference
   sessionStorage.setItem('ollama_location', cloudSelected ? 'cloud' : 'local');
+
+  // Refresh model dropdowns for new location
+  updateModelOptions();
+  updateGradingModelOptions();
 }
 
 function getOllamaConfig() {
@@ -1657,12 +1661,10 @@ function getOllamaConfig() {
   const isCloud = locationRadio && locationRadio.value === 'cloud';
 
   if (isCloud) {
-    // Remote server: use custom endpoint and API key
-    const endpoint = document.getElementById('ollama-endpoint').value || '';
+    const endpoint = document.getElementById('ollama-endpoint').value || 'https://ollama.com/v1';
     const apiKey = document.getElementById('ollama-api-key').value || '';
     return { endpoint, apiKey };
   } else {
-    // Local: localhost (supports both local and :cloud models)
     return {
       endpoint: 'http://localhost:11434/v1',
       apiKey: ''
@@ -1697,7 +1699,13 @@ function updateModelOptions() {
   }
 
   // Populate model dropdown with available models for this provider
-  const models = availableModels[provider] || [];
+  let models;
+  if (provider === 'ollama') {
+    const isCloud = sessionStorage.getItem('ollama_location') === 'cloud';
+    models = isCloud ? availableModels.ollama_cloud : availableModels.ollama_local;
+  } else {
+    models = availableModels[provider] || [];
+  }
   if (models.length === 0) {
     modelSelect.innerHTML = '<option value="">No models available</option>';
     return;
@@ -1722,7 +1730,13 @@ function updateGradingModelOptions() {
   }
 
   // Populate model dropdown with available models for this provider
-  const models = availableModels[provider] || [];
+  let models;
+  if (provider === 'ollama') {
+    const isCloud = sessionStorage.getItem('ollama_location') === 'cloud';
+    models = isCloud ? availableModels.ollama_cloud : availableModels.ollama_local;
+  } else {
+    models = availableModels[provider] || [];
+  }
   if (models.length === 0) {
     modelSelect.innerHTML = '<option value="">No models available</option>';
     return;
