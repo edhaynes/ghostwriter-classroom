@@ -152,6 +152,13 @@
       <input id="groq-api-key" type="password" placeholder="gsk_..." style="margin-bottom:0;width:100%" onchange="saveApiKey('groq-api-key')"/>
     </div>
 
+    <div id="ollama-config-section" style="display:none;margin-bottom:20px;padding:16px;background:#F0F4FF;border:1px solid #B8CFFF;border-radius:6px">
+      <label>Ollama Endpoint <span style="font-size:0.85rem;color:var(--gray)">(leave blank for local: http://localhost:11434/v1)</span></label>
+      <input id="ollama-endpoint" type="text" placeholder="https://your-ollama-cloud.com/v1" style="margin-bottom:12px;width:100%" onchange="saveApiKey('ollama-endpoint')"/>
+      <label>Ollama API Key <span style="font-size:0.85rem;color:var(--gray)">(optional, for cloud Ollama)</span></label>
+      <input id="ollama-api-key" type="password" placeholder="ollama_..." style="margin-bottom:0;width:100%" onchange="saveApiKey('ollama-api-key')"/>
+    </div>
+
     <p style="font-size:0.9rem;color:var(--gray);margin-bottom:16px">Story Generation Model</p>
     <label>Provider</label>
     <select id="model-provider" onchange="updateModelOptions()" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid #DDD;border-radius:4px;font-size:1rem">
@@ -1419,8 +1426,10 @@ async function createInstructorSession() {
       document.getElementById('start-sprint-btn').textContent = '▶ Start 5-Minute Sprint';
     }
 
-    // Load saved API key into field
+    // Load saved API keys and config into fields
     loadSavedApiKey('groq-api-key');
+    loadSavedApiKey('ollama-endpoint');
+    loadSavedApiKey('ollama-api-key');
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -1439,7 +1448,9 @@ function getModelOptions(provider) {
       // KServe endpoint is model-specific
       endpoint = `http://${m.name}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
     } else if (provider === 'ollama') {
-      endpoint = 'http://localhost:11434/v1';
+      // Use custom Ollama endpoint if set, otherwise default to localhost
+      const customEndpoint = sessionStorage.getItem('ollama_endpoint');
+      endpoint = customEndpoint || 'http://localhost:11434/v1';
     }
 
     return {
@@ -1507,18 +1518,21 @@ async function loadConfig() {
 }
 
 function saveApiKey(inputId) {
-  const apiKeyInput = document.getElementById(inputId);
-  if (apiKeyInput && apiKeyInput.value) {
-    sessionStorage.setItem('groq_api_key', apiKeyInput.value);
+  const input = document.getElementById(inputId);
+  if (input && input.value) {
+    // Map input IDs to storage keys
+    const storageKey = inputId.replace(/-/g, '_');
+    sessionStorage.setItem(storageKey, input.value);
   }
 }
 
 function loadSavedApiKey(inputId) {
-  const savedKey = sessionStorage.getItem('groq_api_key');
-  if (savedKey) {
-    const apiKeyInput = document.getElementById(inputId);
-    if (apiKeyInput) {
-      apiKeyInput.value = savedKey;
+  const storageKey = inputId.replace(/-/g, '_');
+  const savedValue = sessionStorage.getItem(storageKey);
+  if (savedValue) {
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.value = savedValue;
     }
   }
 }
@@ -1526,6 +1540,14 @@ function loadSavedApiKey(inputId) {
 function updateModelOptions() {
   const provider = document.getElementById('model-provider').value;
   const modelSelect = document.getElementById('model-name');
+
+  // Show/hide Ollama config section
+  const ollamaSection = document.getElementById('ollama-config-section');
+  if (provider === 'ollama') {
+    ollamaSection.style.display = 'block';
+  } else {
+    ollamaSection.style.display = 'none';
+  }
 
   // Populate model dropdown with available models for this provider
   const models = availableModels[provider] || [];
@@ -1542,6 +1564,15 @@ function updateModelOptions() {
 function updateGradingModelOptions() {
   const provider = document.getElementById('grading-provider').value;
   const modelSelect = document.getElementById('grading-model-name');
+
+  // Show/hide Ollama config section (same for generation and grading)
+  const ollamaSection = document.getElementById('ollama-config-section');
+  const generationProvider = document.getElementById('model-provider').value;
+  if (provider === 'ollama' || generationProvider === 'ollama') {
+    ollamaSection.style.display = 'block';
+  } else {
+    ollamaSection.style.display = 'none';
+  }
 
   // Populate model dropdown with available models for this provider
   const models = availableModels[provider] || [];
@@ -1659,16 +1690,22 @@ async function startWriting() {
   // Get generation model config
   const provider = document.getElementById('model-provider').value;
   const modelName = document.getElementById('model-name').value;
-  const apiKey = document.getElementById('groq-api-key').value;
+  const groqApiKey = document.getElementById('groq-api-key').value;
+  const ollamaEndpoint = document.getElementById('ollama-endpoint').value;
+  const ollamaApiKey = document.getElementById('ollama-api-key').value;
 
   let endpoint;
+  let apiKey;
   if (provider === 'groq') {
     endpoint = 'https://api.groq.com/openai/v1';
+    apiKey = groqApiKey;
   } else if (provider === 'kserve') {
     // KServe endpoint is model-specific
     endpoint = `http://${modelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+    apiKey = '';
   } else if (provider === 'ollama') {
-    endpoint = 'http://localhost:11434/v1';
+    endpoint = ollamaEndpoint || 'http://localhost:11434/v1';
+    apiKey = ollamaApiKey || '';
   }
 
   const modelConfig = {
@@ -1681,15 +1718,18 @@ async function startWriting() {
   // Get grading model config
   const gradingProvider = document.getElementById('grading-provider').value;
   const gradingModelName = document.getElementById('grading-model-name').value;
-  const gradingApiKey = document.getElementById('groq-api-key').value;
 
   let gradingEndpoint;
+  let gradingApiKey;
   if (gradingProvider === 'groq') {
     gradingEndpoint = 'https://api.groq.com/openai/v1';
+    gradingApiKey = groqApiKey;
   } else if (gradingProvider === 'kserve') {
     gradingEndpoint = `http://${gradingModelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+    gradingApiKey = '';
   } else if (gradingProvider === 'ollama') {
-    gradingEndpoint = 'http://localhost:11434/v1';
+    gradingEndpoint = ollamaEndpoint || 'http://localhost:11434/v1';
+    gradingApiKey = ollamaApiKey || '';
   }
 
   const gradingConfig = {
@@ -2162,8 +2202,10 @@ async function initFromURL() {
       badge(session.phase.toUpperCase());
       document.getElementById('student-count-chip').textContent = session.student_count + ' students connected';
     }
-    // Load saved API key into field
+    // Load saved API keys and config into fields
     loadSavedApiKey('groq-api-key');
+    loadSavedApiKey('ollama-endpoint');
+    loadSavedApiKey('ollama-api-key');
     // Start idle timer for instructor
     startIdleTimer();
   } catch (e) {
@@ -2206,15 +2248,22 @@ async function runSimulation() {
     // Save generation model config
     const provider = document.getElementById('model-provider').value;
     const modelName = document.getElementById('model-name').value;
-    const apiKey = document.getElementById('groq-api-key').value;
+    const groqApiKey = document.getElementById('groq-api-key').value;
+    const ollamaEndpoint = document.getElementById('ollama-endpoint').value;
+    const ollamaApiKey = document.getElementById('ollama-api-key').value;
+
     let endpoint;
+    let apiKey;
     if (provider === 'groq') {
       endpoint = 'https://api.groq.com/openai/v1';
+      apiKey = groqApiKey;
     } else if (provider === 'kserve') {
       // KServe endpoint is model-specific
       endpoint = `http://${modelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+      apiKey = '';
     } else if (provider === 'ollama') {
-      endpoint = 'http://localhost:11434/v1';
+      endpoint = ollamaEndpoint || 'http://localhost:11434/v1';
+      apiKey = ollamaApiKey || '';
     }
     const modelConfig = {
       provider: provider,
@@ -2226,14 +2275,18 @@ async function runSimulation() {
     // Save grading model config
     const gradingProvider = document.getElementById('grading-provider').value;
     const gradingModelName = document.getElementById('grading-model-name').value;
-    const gradingApiKey = document.getElementById('groq-api-key').value;
+
     let gradingEndpoint;
+    let gradingApiKey;
     if (gradingProvider === 'groq') {
       gradingEndpoint = 'https://api.groq.com/openai/v1';
+      gradingApiKey = groqApiKey;
     } else if (gradingProvider === 'kserve') {
       gradingEndpoint = `http://${gradingModelName}-predictor.ghostwriter.svc.cluster.local:8080/v1`;
+      gradingApiKey = '';
     } else if (gradingProvider === 'ollama') {
-      gradingEndpoint = 'http://localhost:11434/v1';
+      gradingEndpoint = ollamaEndpoint || 'http://localhost:11434/v1';
+      gradingApiKey = ollamaApiKey || '';
     }
     const gradingConfig = {
       provider: gradingProvider,
@@ -2266,8 +2319,13 @@ let sessionApiKey = '';  // Store the session's Groq API key
 
 function parseModelConfig(value) {
   const [provider, endpoint, model_name] = value.split('|');
-  // For Groq, use sessionApiKey or fall back to sessionStorage
-  const api_key = provider === 'groq' ? (sessionApiKey || sessionStorage.getItem('groq_api_key') || '') : '';
+  // Get API key based on provider
+  let api_key = '';
+  if (provider === 'groq') {
+    api_key = sessionApiKey || sessionStorage.getItem('groq_api_key') || '';
+  } else if (provider === 'ollama') {
+    api_key = sessionStorage.getItem('ollama_api_key') || '';
+  }
   return { provider, endpoint, model_name, api_key };
 }
 
